@@ -1,7 +1,12 @@
 package main
 
-import "fmt"
+import (
+	"authentication-service/internal/app"
+)
+
+const configsDir = "configs"
+const envDir = ".env"
 
 func main() {
-	fmt.Println("hello world")
+	app.Run(configsDir, envDir)
 }

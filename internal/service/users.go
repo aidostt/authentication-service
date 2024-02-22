@@ -82,7 +82,7 @@ func (s *UsersService) createSession(ctx context.Context, userId primitive.Objec
 		err error
 	)
 
-	res.AccessToken, err = s.tokenManager.NewJWT(userId.Hex(), s.accessTokenTTL)
+	res.AccessToken, err = s.tokenManager.NewAccessToken(userId.Hex(), s.accessTokenTTL)
 	if err != nil {
 		return res, err
 	}
@@ -94,7 +94,7 @@ func (s *UsersService) createSession(ctx context.Context, userId primitive.Objec
 
 	session := domain.Session{
 		RefreshToken: res.RefreshToken,
-		ExpiresAt:    time.Now().Add(s.refreshTokenTTL),
+		ExpiredAt:    time.Now().Add(s.refreshTokenTTL),
 	}
 
 	err = s.repo.SetSession(ctx, userId, session)
