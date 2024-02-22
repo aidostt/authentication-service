@@ -33,9 +33,7 @@ func (h *Handler) userSignUp(c *gin.Context) {
 	}
 
 	if err := h.services.Users.SignUp(c.Request.Context(), service.UserSignUpInput{
-		Name:     inp.Name,
 		Email:    inp.Email,
-		Phone:    inp.Phone,
 		Password: inp.Password,
 	}); err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {

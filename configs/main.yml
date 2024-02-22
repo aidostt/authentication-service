@@ -5,7 +5,7 @@ http:
   writeTimeout: 10s
 
 mongo:
-  databaseName: coursePlatform
+  databaseName: MEDODS
 
 auth:
   accessTokenTTL: 15m
