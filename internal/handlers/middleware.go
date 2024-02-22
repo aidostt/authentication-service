@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strings"
 )
 
 const (
@@ -23,21 +22,15 @@ func (h *Handler) userIdentity(c *gin.Context) {
 }
 
 func (h *Handler) parseAuthHeader(c *gin.Context) (string, error) {
-	header := c.GetHeader(authorizationHeader)
-	if header == "" {
-		return "", errors.New("empty auth header")
+	token, err := c.Cookie("jwt")
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			return "", errors.New("unauthorized access")
+		}
+		return "", err
 	}
 
-	headerParts := strings.Split(header, " ")
-	if len(headerParts) != 2 || headerParts[0] != "Bearer" {
-		return "", errors.New("invalid auth header")
-	}
-
-	if len(headerParts[1]) == 0 {
-		return "", errors.New("token is empty")
-	}
-
-	return h.tokenManager.Parse(headerParts[1])
+	return h.tokenManager.Parse(token)
 }
 
 func corsMiddleware(c *gin.Context) {

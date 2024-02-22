@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"errors"
-	"net/http"
-
 	"authentication-service/internal/domain"
 	"authentication-service/internal/service"
+	"errors"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
@@ -15,10 +14,10 @@ func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
 		users.POST("/sign-up", h.userSignUp)
 		users.POST("/sign-in", h.userSignIn)
 		users.POST("/auth/refresh", h.userRefresh)
-
 		authenticated := users.Group("/", h.userIdentity)
 		{
 			authenticated.GET("/healthcheck", h.healthcheck)
+			users.POST("/sign-out", h.logout)
 
 		}
 	}
@@ -74,6 +73,8 @@ func (h *Handler) userSignIn(c *gin.Context) {
 		return
 	}
 
+	c.SetCookie("jwt", res.AccessToken, 900000000000, "/", "", false, true)
+	c.SetCookie("refresh", res.RefreshToken, 2592000000000000, "/", "", false, true)
 	c.JSON(http.StatusOK, tokenResponse{
 		AccessToken:  res.AccessToken,
 		RefreshToken: res.RefreshToken,
@@ -81,23 +82,33 @@ func (h *Handler) userSignIn(c *gin.Context) {
 }
 
 func (h *Handler) userRefresh(c *gin.Context) {
-	var inp refreshInput
-	if err := c.BindJSON(&inp); err != nil {
-		newResponse(c, http.StatusBadRequest, "invalid input body")
-
+	token, err := c.Cookie("refresh")
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			newResponse(c, http.StatusUnauthorized, "unauthorized access")
+			return
+		}
+		newResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	res, err := h.services.Users.RefreshTokens(c.Request.Context(), inp.Token)
+	res, err := h.services.Users.RefreshTokens(c.Request.Context(), token)
 	if err != nil {
 		newResponse(c, http.StatusInternalServerError, err.Error())
 
 		return
 	}
 
+	c.SetCookie("jwt", res.AccessToken, 900000000000, "/", "", false, true)
+	c.SetCookie("refresh", res.RefreshToken, 2592000000000000, "/", "", false, true)
 	c.JSON(http.StatusOK, tokenResponse{
 		AccessToken:  res.AccessToken,
 		RefreshToken: res.RefreshToken,
 	})
+}
 
+func (h *Handler) logout(c *gin.Context) {
+	c.SetCookie("jwt", "", -1, "/", "", false, true)
+	c.JSON(http.StatusOK, healthResponse{
+		Status: "success",
+	})
 }
