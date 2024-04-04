@@ -1,7 +1,8 @@
-package handlers
+package delivery
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -15,7 +16,25 @@ const (
 func (h *Handler) userIdentity(c *gin.Context) {
 	id, err := h.parseAuthHeader(c)
 	if err != nil {
-		newResponse(c, http.StatusUnauthorized, err.Error())
+		fmt.Println("i was here before you")
+		if err.Error() == "token is expired" {
+			fmt.Println("i was here")
+			// Token is expired, attempt to refresh it
+			newAT, refreshErr := h.services.Session.RefreshTokens(c.Request.Context(), c.GetHeader(authorizationHeader))
+			if refreshErr != nil {
+				newResponse(c, http.StatusUnauthorized, refreshErr.Error())
+				return
+			}
+
+			// Set the new token as a cookie
+			c.SetCookie("jwt", newAT, 3600, "/", "localhost", false, true)
+
+			// Update the context with the new user ID
+			id, _ = h.parseAuthHeader(c)
+		} else {
+			newResponse(c, http.StatusUnauthorized, err.Error())
+			return
+		}
 	}
 
 	c.Set(userCtx, id)

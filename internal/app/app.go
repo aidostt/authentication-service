@@ -2,7 +2,7 @@ package app
 
 import (
 	"authentication-service/internal/config"
-	"authentication-service/internal/handlers"
+	"authentication-service/internal/delivery"
 	"authentication-service/internal/repository"
 	"authentication-service/internal/server"
 	"authentication-service/internal/service"
@@ -34,7 +34,6 @@ func Run(configPath, envPath string) {
 
 		return
 	}
-
 	db := mongoClient.Database(cfg.Mongo.Name)
 
 	hasher := hash.NewSHA1Hasher(cfg.Auth.PasswordSalt)
@@ -56,7 +55,7 @@ func Run(configPath, envPath string) {
 		Environment:     cfg.Environment,
 		Domain:          cfg.HTTP.Host,
 	})
-	handlers := handlers.NewHandler(services, tokenManager)
+	handlers := delivery.NewHandler(services, tokenManager)
 
 	// HTTP Server
 	srv := server.NewServer(cfg, handlers.Init())

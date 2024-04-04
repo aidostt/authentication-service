@@ -1,4 +1,4 @@
-package handlers
+package delivery
 
 import (
 	"authentication-service/internal/domain"
@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
@@ -30,22 +31,20 @@ func (h *Handler) userSignUp(c *gin.Context) {
 
 		return
 	}
-
-	if err := h.services.Users.SignUp(c.Request.Context(), service.UserSignUpInput{
+	AT, err := h.services.Users.SignUp(c.Request.Context(), service.UserSignUpInput{
 		Email:    inp.Email,
 		Password: inp.Password,
-	}); err != nil {
+	})
+	if err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
 			newResponse(c, http.StatusBadRequest, err.Error())
-
 			return
 		}
-
 		newResponse(c, http.StatusInternalServerError, err.Error())
-
 		return
 	}
-
+	c.SetCookie("jwt", AT, time.Now().Second()+900, "/", "", false, true)
+	c.JSON(http.StatusOK, tokenResponse{AccessToken: AT})
 	c.Status(http.StatusCreated)
 }
 
@@ -53,36 +52,29 @@ func (h *Handler) userSignIn(c *gin.Context) {
 	var inp signInInput
 	if err := c.BindJSON(&inp); err != nil {
 		newResponse(c, http.StatusBadRequest, "invalid input body")
-
 		return
 	}
 
-	res, err := h.services.Users.SignIn(c.Request.Context(), service.UserSignInInput{
+	AT, err := h.services.Users.SignIn(c.Request.Context(), service.UserSignInInput{
 		Email:    inp.Email,
 		Password: inp.Password,
 	})
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
 			newResponse(c, http.StatusBadRequest, err.Error())
-
 			return
 		}
 
 		newResponse(c, http.StatusInternalServerError, err.Error())
-
 		return
 	}
-
-	c.SetCookie("jwt", res.AccessToken, 900000000000, "/", "", false, true)
-	c.SetCookie("refresh", res.RefreshToken, 2592000000000000, "/", "", false, true)
-	c.JSON(http.StatusOK, tokenResponse{
-		AccessToken:  res.AccessToken,
-		RefreshToken: res.RefreshToken,
-	})
+	c.SetCookie("jwt", AT, time.Now().Second()+900, "/", "", false, true)
+	c.JSON(http.StatusOK, tokenResponse{AccessToken: AT})
+	//c.SetCookie("refresh", res.RefreshToken, time.Now().Second()+3600, "/", "", false, true)
 }
 
 func (h *Handler) userRefresh(c *gin.Context) {
-	token, err := c.Cookie("refresh")
+	token, err := c.Cookie("jwt")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
 			newResponse(c, http.StatusUnauthorized, "unauthorized access")
@@ -91,19 +83,13 @@ func (h *Handler) userRefresh(c *gin.Context) {
 		newResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	res, err := h.services.Users.RefreshTokens(c.Request.Context(), token)
+	AT, err := h.services.Session.RefreshTokens(c.Request.Context(), token)
 	if err != nil {
 		newResponse(c, http.StatusInternalServerError, err.Error())
-
 		return
 	}
-
-	c.SetCookie("jwt", res.AccessToken, 900000000000, "/", "", false, true)
-	c.SetCookie("refresh", res.RefreshToken, 2592000000000000, "/", "", false, true)
-	c.JSON(http.StatusOK, tokenResponse{
-		AccessToken:  res.AccessToken,
-		RefreshToken: res.RefreshToken,
-	})
+	c.SetCookie("jwt", AT, time.Now().Second()+900, "/", "", false, true)
+	c.JSON(http.StatusOK, tokenResponse{AccessToken: AT})
 }
 
 func (h *Handler) logout(c *gin.Context) {

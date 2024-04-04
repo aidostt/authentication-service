@@ -8,18 +8,25 @@ import (
 )
 
 type Users interface {
-	Create(ctx context.Context, user domain.User) error
+	Create(ctx context.Context, user *domain.User) error
 	GetByEmail(ctx context.Context, email string) (domain.User, error)
+	//TODO: delete user
+}
+type Sessions interface {
+	SetSession(ctx context.Context, session domain.Session) error
 	GetByRefreshToken(ctx context.Context, refreshToken string) (domain.User, error)
-	SetSession(ctx context.Context, userID primitive.ObjectID, session domain.Session) error
+	GetByUserID(ctx context.Context, userID primitive.ObjectID) (domain.User, error)
+	//TODO: delete session
 }
 
 type Models struct {
-	Users Users
+	Users    Users
+	Sessions Sessions
 }
 
 func NewModels(db *mongo.Database) *Models {
 	return &Models{
-		Users: NewUsersRepo(db),
+		Users:    NewUsersRepo(db),
+		Sessions: NewSessionRepo(db),
 	}
 }

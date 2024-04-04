@@ -1,4 +1,4 @@
-package handlers
+package delivery
 
 import (
 	"authentication-service/pkg/logger"

@@ -5,6 +5,7 @@ import (
 	"authentication-service/pkg/hash"
 	auth "authentication-service/pkg/manager"
 	"context"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
 
@@ -20,19 +21,22 @@ type UserSignInInput struct {
 	Password string
 }
 
-type Tokens struct {
-	AccessToken  string
-	RefreshToken string
+//TODO: refactor tokenPair struct
+
+type Session interface {
+	RefreshTokens(context.Context, string) (string, error)
+	CreateSession(context.Context, primitive.ObjectID) (string, error)
 }
 
 type Users interface {
-	SignUp(ctx context.Context, input UserSignUpInput) error
-	SignIn(ctx context.Context, input UserSignInInput) (Tokens, error)
-	RefreshTokens(ctx context.Context, refreshToken string) (Tokens, error)
+	SignUp(context.Context, UserSignUpInput) (string, error)
+	SignIn(context.Context, UserSignInInput) (string, error)
+	CreateSession(context.Context, primitive.ObjectID) (string, error)
 }
 
 type Services struct {
-	Users Users
+	Users   Users
+	Session Session
 }
 
 type Dependencies struct {
@@ -46,9 +50,10 @@ type Dependencies struct {
 }
 
 func NewServices(deps Dependencies) *Services {
-	usersService := NewUsersService(deps.Repos.Users, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain)
-
+	sessionService := NewSessionsService(deps.Repos.Sessions, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain)
+	usersService := NewUsersService(deps.Repos.Users, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain, sessionService)
 	return &Services{
-		Users: usersService,
+		Users:   usersService,
+		Session: sessionService,
 	}
 }

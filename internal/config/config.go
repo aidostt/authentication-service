@@ -13,7 +13,7 @@ const (
 	defaultHTTPRWTimeout          = 10 * time.Second
 	defaultHTTPMaxHeaderMegabytes = 1
 	defaultAccessTokenTTL         = 15 * time.Minute
-	defaultRefreshTokenTTL        = 24 * time.Hour * 30
+	defaultRefreshTokenTTL        = 12 * time.Hour
 
 	EnvLocal = "local"
 )

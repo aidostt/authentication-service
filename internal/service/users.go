@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 
 	"authentication-service/internal/domain"
 	"authentication-service/internal/repository"
 	"authentication-service/pkg/hash"
 	"authentication-service/pkg/manager"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type UsersService struct {
@@ -18,11 +18,11 @@ type UsersService struct {
 	tokenManager    auth.TokenManager
 	accessTokenTTL  time.Duration
 	refreshTokenTTL time.Duration
-
-	domain string
+	SessionService  *SessionService
+	domain          string
 }
 
-func NewUsersService(repo repository.Users, hasher hash.PasswordHasher, tokenManager auth.TokenManager, accessTTL, refreshTTL time.Duration, domain string) *UsersService {
+func NewUsersService(repo repository.Users, hasher hash.PasswordHasher, tokenManager auth.TokenManager, accessTTL, refreshTTL time.Duration, domain string, sessionService *SessionService) *UsersService {
 	return &UsersService{
 		repo:            repo,
 		hasher:          hasher,
@@ -30,74 +30,42 @@ func NewUsersService(repo repository.Users, hasher hash.PasswordHasher, tokenMan
 		accessTokenTTL:  accessTTL,
 		refreshTokenTTL: refreshTTL,
 		domain:          domain,
+		SessionService:  sessionService,
 	}
 }
-
-func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) error {
+func (s *UsersService) CreateSession(ctx context.Context, userId primitive.ObjectID) (string, error) {
+	return s.SessionService.CreateSession(ctx, userId)
+}
+func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (string, error) {
 	passwordHash, err := s.hasher.Hash(input.Password)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	user := domain.User{
+	user := &domain.User{
 		Email:    input.Email,
 		Password: passwordHash,
 	}
 
 	if err := s.repo.Create(ctx, user); err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
-			return err
+			return "", err
 		}
 
-		return err
+		return "", err
 	}
-	return nil
+	return s.CreateSession(ctx, user.ID)
 }
 
-func (s *UsersService) SignIn(ctx context.Context, input UserSignInInput) (Tokens, error) {
+func (s *UsersService) SignIn(ctx context.Context, input UserSignInInput) (string, error) {
 	user, err := s.repo.GetByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			return Tokens{}, err
+			return "", err
 		}
 
-		return Tokens{}, err
+		return "", err
 	}
 
-	return s.createSession(ctx, user.ID)
-}
-
-func (s *UsersService) RefreshTokens(ctx context.Context, refreshToken string) (Tokens, error) {
-	student, err := s.repo.GetByRefreshToken(ctx, refreshToken)
-	if err != nil {
-		return Tokens{}, err
-	}
-
-	return s.createSession(ctx, student.ID)
-}
-
-func (s *UsersService) createSession(ctx context.Context, userId primitive.ObjectID) (Tokens, error) {
-	var (
-		res Tokens
-		err error
-	)
-
-	res.AccessToken, err = s.tokenManager.NewAccessToken(userId.Hex(), s.accessTokenTTL)
-	if err != nil {
-		return res, err
-	}
-
-	res.RefreshToken, err = s.tokenManager.NewRefreshToken()
-	if err != nil {
-		return res, err
-	}
-
-	session := domain.Session{
-		RefreshToken: res.RefreshToken,
-		ExpiredAt:    time.Now().Add(s.refreshTokenTTL),
-	}
-
-	err = s.repo.SetSession(ctx, userId, session)
-
-	return res, err
+	return s.CreateSession(ctx, user.ID)
 }

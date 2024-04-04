@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"math/rand"
 	"time"
 )
@@ -13,6 +14,7 @@ type TokenManager interface {
 	NewAccessToken(userId string, ttl time.Duration) (string, error)
 	Parse(accessToken string) (string, error)
 	NewRefreshToken() (string, error)
+	HexToObjectID(string) (primitive.ObjectID, error)
 }
 
 type Manager struct {
@@ -45,6 +47,12 @@ func (m *Manager) Parse(accessToken string) (string, error) {
 		return []byte(m.signingKey), nil
 	})
 	if err != nil {
+		var ve *jwt.ValidationError
+		ok := errors.As(err, &ve)
+		if ok && ve.Errors&jwt.ValidationErrorExpired != 0 {
+			// Token is expired
+			return "", errors.New("token is expired")
+		}
 		return "", err
 	}
 
@@ -67,4 +75,12 @@ func (m *Manager) NewRefreshToken() (string, error) {
 	}
 
 	return fmt.Sprintf("%x", b), nil
+}
+
+func (m *Manager) HexToObjectID(hex string) (primitive.ObjectID, error) {
+	objectId, err := primitive.ObjectIDFromHex(hex)
+	if err != nil {
+		return primitive.NilObjectID, err
+	}
+	return objectId, nil
 }

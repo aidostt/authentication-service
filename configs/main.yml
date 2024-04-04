@@ -5,8 +5,8 @@ http:
   writeTimeout: 10s
 
 mongo:
-  databaseName: MEDODS
+  databaseName: reservista
 
 auth:
-  accessTokenTTL: 15m
-  refreshTokenTTL: 360h #15 days
+  accessTokenTTL: 5s
+  refreshTokenTTL: 24h
