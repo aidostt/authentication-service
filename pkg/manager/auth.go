@@ -38,6 +38,8 @@ func (m *Manager) NewAccessToken(userId string, ttl time.Duration) (string, erro
 	return token.SignedString([]byte(m.signingKey))
 }
 
+// Parse taking from the payload of JWT user id and returns it in string format. Token is still returned
+// in both cases, if it is expired or not.
 func (m *Manager) Parse(accessToken string) (string, error) {
 	token, err := jwt.Parse(accessToken, func(token *jwt.Token) (i interface{}, err error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -47,13 +49,12 @@ func (m *Manager) Parse(accessToken string) (string, error) {
 		return []byte(m.signingKey), nil
 	})
 	if err != nil {
-		var ve *jwt.ValidationError
-		ok := errors.As(err, &ve)
-		if ok && ve.Errors&jwt.ValidationErrorExpired != 0 {
-			// Token is expired
-			return "", errors.New("token is expired")
+		var validationError *jwt.ValidationError
+		if errors.As(err, &validationError) && validationError.Errors&jwt.ValidationErrorExpired != 0 {
+			err = errors.New("token is expired")
+		} else {
+			return "", err
 		}
-		return "", err
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
@@ -61,7 +62,7 @@ func (m *Manager) Parse(accessToken string) (string, error) {
 		return "", fmt.Errorf("error get user claims from token")
 	}
 
-	return claims["sub"].(string), nil
+	return claims["sub"].(string), err
 }
 
 func (m *Manager) NewRefreshToken() (string, error) {

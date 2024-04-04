@@ -16,6 +16,7 @@ func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
 		users.POST("/sign-in", h.userSignIn)
 		users.POST("/auth/refresh", h.userRefresh)
 		authenticated := users.Group("/", h.userIdentity)
+		authenticated.Use(h.isExpired)
 		{
 			authenticated.GET("/healthcheck", h.healthcheck)
 			users.POST("/sign-out", h.logout)
@@ -31,7 +32,7 @@ func (h *Handler) userSignUp(c *gin.Context) {
 
 		return
 	}
-	AT, err := h.services.Users.SignUp(c.Request.Context(), service.UserSignUpInput{
+	tokens, err := h.services.Users.SignUp(c.Request.Context(), service.UserSignUpInput{
 		Email:    inp.Email,
 		Password: inp.Password,
 	})
@@ -43,8 +44,12 @@ func (h *Handler) userSignUp(c *gin.Context) {
 		newResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.SetCookie("jwt", AT, time.Now().Second()+900, "/", "", false, true)
-	c.JSON(http.StatusOK, tokenResponse{AccessToken: AT})
+	c.SetCookie("jwt", tokens.AccessToken, time.Now().Second()+ATCookieTTL, "/", "", false, true)
+	c.SetCookie("RT", tokens.RefreshToken, time.Now().Second()+RTCookieTTL, "/", "", false, true)
+	c.JSON(http.StatusOK, tokenResponse{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	})
 	c.Status(http.StatusCreated)
 }
 
@@ -55,7 +60,7 @@ func (h *Handler) userSignIn(c *gin.Context) {
 		return
 	}
 
-	AT, err := h.services.Users.SignIn(c.Request.Context(), service.UserSignInInput{
+	tokens, err := h.services.Users.SignIn(c.Request.Context(), service.UserSignInInput{
 		Email:    inp.Email,
 		Password: inp.Password,
 	})
@@ -68,13 +73,16 @@ func (h *Handler) userSignIn(c *gin.Context) {
 		newResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.SetCookie("jwt", AT, time.Now().Second()+900, "/", "", false, true)
-	c.JSON(http.StatusOK, tokenResponse{AccessToken: AT})
-	//c.SetCookie("refresh", res.RefreshToken, time.Now().Second()+3600, "/", "", false, true)
+	c.SetCookie("jwt", tokens.AccessToken, time.Now().Second()+ATCookieTTL, "/", "", false, true)
+	c.SetCookie("RT", tokens.RefreshToken, time.Now().Second()+RTCookieTTL, "/", "", false, true)
+	c.JSON(http.StatusOK, tokenResponse{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	})
 }
 
 func (h *Handler) userRefresh(c *gin.Context) {
-	token, err := c.Cookie("jwt")
+	token, err := c.Cookie("RT")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
 			newResponse(c, http.StatusUnauthorized, "unauthorized access")
@@ -83,17 +91,22 @@ func (h *Handler) userRefresh(c *gin.Context) {
 		newResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	AT, err := h.services.Session.RefreshTokens(c.Request.Context(), token)
+	tokens, err := h.services.Session.RefreshTokens(c.Request.Context(), token)
 	if err != nil {
 		newResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.SetCookie("jwt", AT, time.Now().Second()+900, "/", "", false, true)
-	c.JSON(http.StatusOK, tokenResponse{AccessToken: AT})
+	c.SetCookie("jwt", tokens.AccessToken, time.Now().Second()+ATCookieTTL, "/", "", false, true)
+	c.SetCookie("RT", tokens.RefreshToken, time.Now().Second()+RTCookieTTL, "/", "", false, true)
+	c.JSON(http.StatusOK, tokenResponse{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	})
 }
 
 func (h *Handler) logout(c *gin.Context) {
 	c.SetCookie("jwt", "", -1, "/", "", false, true)
+	c.SetCookie("RT", "", -1, "/", "", false, true)
 	c.JSON(http.StatusOK, healthResponse{
 		Status: "success",
 	})

@@ -8,5 +8,5 @@ mongo:
   databaseName: reservista
 
 auth:
-  accessTokenTTL: 5s
-  refreshTokenTTL: 24h
+  accessTokenTTL: 15m
+  refreshTokenTTL: 12h

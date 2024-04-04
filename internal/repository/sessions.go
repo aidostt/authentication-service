@@ -45,20 +45,19 @@ func (r *SessionRepo) SetSession(ctx context.Context, session domain.Session) er
 	return nil
 }
 
-func (r *SessionRepo) GetByRefreshToken(ctx context.Context, refreshToken string) (domain.User, error) {
-	var user domain.User
+func (r *SessionRepo) GetByRefreshToken(ctx context.Context, refreshToken string) (*domain.Session, error) {
+	session := &domain.Session{}
 	if err := r.db.FindOne(ctx, bson.M{
 		"refreshToken": refreshToken,
-		"expiresAt":    bson.M{"$gt": time.Now()},
-	}).Decode(&user); err != nil {
+	}).Decode(&session); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return domain.User{}, domain.ErrUserNotFound
+			return &domain.Session{}, domain.ErrUserNotFound
 		}
 
-		return domain.User{}, err
+		return &domain.Session{}, err
 	}
 
-	return user, nil
+	return session, nil
 }
 func (r *SessionRepo) GetByUserID(ctx context.Context, userID primitive.ObjectID) (domain.User, error) {
 	var user domain.User

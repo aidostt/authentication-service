@@ -33,13 +33,13 @@ func NewUsersService(repo repository.Users, hasher hash.PasswordHasher, tokenMan
 		SessionService:  sessionService,
 	}
 }
-func (s *UsersService) CreateSession(ctx context.Context, userId primitive.ObjectID) (string, error) {
+func (s *UsersService) CreateSession(ctx context.Context, userId primitive.ObjectID) (TokenPair, error) {
 	return s.SessionService.CreateSession(ctx, userId)
 }
-func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (string, error) {
+func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (TokenPair, error) {
 	passwordHash, err := s.hasher.Hash(input.Password)
 	if err != nil {
-		return "", err
+		return TokenPair{}, err
 	}
 
 	user := &domain.User{
@@ -49,22 +49,21 @@ func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (strin
 
 	if err := s.repo.Create(ctx, user); err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
-			return "", err
+			return TokenPair{}, err
 		}
-
-		return "", err
+		return TokenPair{}, err
 	}
 	return s.CreateSession(ctx, user.ID)
 }
 
-func (s *UsersService) SignIn(ctx context.Context, input UserSignInInput) (string, error) {
+func (s *UsersService) SignIn(ctx context.Context, input UserSignInInput) (TokenPair, error) {
 	user, err := s.repo.GetByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			return "", err
+			return TokenPair{}, err
 		}
 
-		return "", err
+		return TokenPair{}, err
 	}
 
 	return s.CreateSession(ctx, user.ID)

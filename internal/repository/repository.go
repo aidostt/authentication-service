@@ -14,7 +14,7 @@ type Users interface {
 }
 type Sessions interface {
 	SetSession(ctx context.Context, session domain.Session) error
-	GetByRefreshToken(ctx context.Context, refreshToken string) (domain.User, error)
+	GetByRefreshToken(ctx context.Context, refreshToken string) (*domain.Session, error)
 	GetByUserID(ctx context.Context, userID primitive.ObjectID) (domain.User, error)
 	//TODO: delete session
 }

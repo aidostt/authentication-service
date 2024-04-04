@@ -21,17 +21,21 @@ type UserSignInInput struct {
 	Password string
 }
 
-//TODO: refactor tokenPair struct
+type TokenPair struct {
+	AccessToken  string
+	RefreshToken string
+}
 
 type Session interface {
-	RefreshTokens(context.Context, string) (string, error)
-	CreateSession(context.Context, primitive.ObjectID) (string, error)
+	RefreshTokens(context.Context, string) (TokenPair, error)
+	CreateSession(context.Context, primitive.ObjectID) (TokenPair, error)
+	GetToken(context.Context, string) (string, error)
 }
 
 type Users interface {
-	SignUp(context.Context, UserSignUpInput) (string, error)
-	SignIn(context.Context, UserSignInInput) (string, error)
-	CreateSession(context.Context, primitive.ObjectID) (string, error)
+	SignUp(context.Context, UserSignUpInput) (TokenPair, error)
+	SignIn(context.Context, UserSignInInput) (TokenPair, error)
+	CreateSession(context.Context, primitive.ObjectID) (TokenPair, error)
 }
 
 type Services struct {

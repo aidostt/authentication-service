@@ -31,43 +31,42 @@ func NewSessionsService(repo repository.Sessions, hasher hash.PasswordHasher, to
 	}
 }
 
-func (s *SessionService) RefreshTokens(ctx context.Context, accessToken string) (string, error) {
-	hex, err := s.tokenManager.Parse(accessToken)
+func (s *SessionService) RefreshTokens(ctx context.Context, refreshToken string) (res TokenPair, err error) {
+	session, err := s.repo.GetByRefreshToken(ctx, refreshToken)
 	if err != nil {
-		return "", err
-	}
-	id, err := s.tokenManager.HexToObjectID(hex)
-	if err != nil {
-		return "", err
+		return TokenPair{}, err
 	}
 
-	user, err := s.repo.GetByUserID(ctx, id)
-	if err != nil {
-		return "", err
-	}
-
-	return s.CreateSession(ctx, user.ID)
+	return s.CreateSession(ctx, session.UserID)
 }
 
-func (s *SessionService) CreateSession(ctx context.Context, userId primitive.ObjectID) (string, error) {
-
-	AT, err := s.tokenManager.NewAccessToken(userId.Hex(), s.accessTokenTTL)
+func (s *SessionService) CreateSession(ctx context.Context, userId primitive.ObjectID) (res TokenPair, err error) {
+	res.AccessToken, err = s.tokenManager.NewAccessToken(userId.Hex(), s.accessTokenTTL)
 	if err != nil {
-		return "", err
+		return TokenPair{}, err
 	}
 
-	RT, err := s.tokenManager.NewRefreshToken()
+	res.RefreshToken, err = s.tokenManager.NewRefreshToken()
 	if err != nil {
-		return "", err
+		return TokenPair{}, err
 	}
 
 	session := domain.Session{
 		UserID:       userId,
-		RefreshToken: RT,
+		RefreshToken: res.RefreshToken,
 		ExpiredAt:    time.Now().Add(s.refreshTokenTTL),
 	}
 
 	err = s.repo.SetSession(ctx, session)
 
-	return AT, err
+	return
+}
+
+func (s *SessionService) GetToken(ctx context.Context, RT string) (string, error) {
+	session, err := s.repo.GetByRefreshToken(ctx, RT)
+	if err != nil {
+		return "", err
+
+	}
+	return session.RefreshToken, nil
 }

@@ -1,55 +1,115 @@
 package delivery
 
 import (
+	"authentication-service/internal/domain"
+	"authentication-service/internal/service"
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 const (
 	authorizationHeader = "Authorization"
 
-	userCtx = "userId"
+	userCtx     = "userId"
+	ATCookieTTL = 900
+	RTCookieTTL = 43200
 )
 
 func (h *Handler) userIdentity(c *gin.Context) {
-	id, err := h.parseAuthHeader(c)
+	id, _, err := h.parseAuthHeader(c)
 	if err != nil {
-		fmt.Println("i was here before you")
-		if err.Error() == "token is expired" {
-			fmt.Println("i was here")
-			// Token is expired, attempt to refresh it
-			newAT, refreshErr := h.services.Session.RefreshTokens(c.Request.Context(), c.GetHeader(authorizationHeader))
-			if refreshErr != nil {
-				newResponse(c, http.StatusUnauthorized, refreshErr.Error())
-				return
-			}
-
-			// Set the new token as a cookie
-			c.SetCookie("jwt", newAT, 3600, "/", "localhost", false, true)
-
-			// Update the context with the new user ID
-			id, _ = h.parseAuthHeader(c)
-		} else {
-			newResponse(c, http.StatusUnauthorized, err.Error())
-			return
-		}
+		newResponse(c, http.StatusUnauthorized, "unauthorized access")
+		return
 	}
 
 	c.Set(userCtx, id)
 }
 
-func (h *Handler) parseAuthHeader(c *gin.Context) (string, error) {
+func (h *Handler) isExpired(c *gin.Context) {
+	idCtx, exist := c.Get(userCtx)
+	if !exist {
+		newResponse(c, http.StatusUnauthorized, "unauthorized access")
+		return
+	}
+	var (
+		tokens service.TokenPair
+		err    error
+	)
+	idJWT, expired, err := h.parseAuthHeader(c)
+	if idJWT != idCtx {
+		newResponse(c, http.StatusUnauthorized, "unauthorized access")
+		return
+	}
+	if !expired {
+		c.Next()
+		return
+	}
+	tokens.RefreshToken, err = c.Cookie("RT")
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			newResponse(c, http.StatusUnauthorized, "unauthorized access")
+			return
+		}
+		newResponse(c, http.StatusUnauthorized, err.Error())
+		return
+	}
+	storedRefreshToken, err := h.services.Session.GetToken(c.Request.Context(), tokens.RefreshToken)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			newResponse(c, http.StatusUnauthorized, "unauthorized access")
+			return
+		}
+		newResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if storedRefreshToken != tokens.RefreshToken {
+		newResponse(c, http.StatusUnauthorized, "unauthorized access")
+		return
+	}
+	id, err := h.tokenManager.HexToObjectID(idJWT)
+	if err != nil {
+		newResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	tokens, err = h.services.Session.CreateSession(c.Request.Context(), id)
+	if err != nil {
+		newResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.SetCookie("jwt", tokens.AccessToken, time.Now().Second()+ATCookieTTL, "/", "", false, true)
+	c.SetCookie("RT", tokens.RefreshToken, time.Now().Second()+RTCookieTTL, "/", "", false, true)
+	c.JSON(http.StatusOK, tokenResponse{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	})
+}
+
+func (h *Handler) parseAuthHeader(c *gin.Context) (string, bool, error) {
+	var expired bool
 	token, err := c.Cookie("jwt")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
-			return "", errors.New("unauthorized access")
+			return "", false, errors.New("unauthorized access")
 		}
-		return "", err
+		return "", false, err
+	}
+	id, err := h.tokenManager.Parse(token)
+
+	if err != nil {
+		switch err.Error() {
+		//TODO: fix the error message
+		case "unauthorized access", "token has xxx elements":
+			return "", false, err
+		case "token is expired":
+			expired = true
+		default:
+			return "", false, err
+		}
 	}
 
-	return h.tokenManager.Parse(token)
+	return id, expired, nil
 }
 
 func corsMiddleware(c *gin.Context) {
