@@ -1,4 +1,4 @@
-package delivery
+package http_delivery
 
 type userSignUpInput struct {
 	Email    string `json:"email" binding:"required,email,max=64"`

@@ -10,3 +10,7 @@ mongo:
 auth:
   accessTokenTTL: 15m
   refreshTokenTTL: 12h
+
+grpc:
+  port: 44044
+  timeout: 5s

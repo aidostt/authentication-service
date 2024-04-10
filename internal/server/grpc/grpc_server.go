@@ -3,16 +3,18 @@ package server
 import (
 	"authentication-service/internal/config"
 	"context"
+	"google.golang.org/grpc"
 	"net/http"
 )
 
 type Server struct {
-	httpServer *http.Server
+	grpcServer *grpc.Server
 }
 
 func NewServer(cfg *config.Config, handler http.Handler) *Server {
 	return &Server{
-		httpServer: &http.Server{
+		grpcServer: &grpc.Server{
+
 			Addr:           "localhost:" + cfg.HTTP.Port,
 			Handler:        handler,
 			ReadTimeout:    cfg.HTTP.ReadTimeout,
@@ -23,9 +25,9 @@ func NewServer(cfg *config.Config, handler http.Handler) *Server {
 }
 
 func (s *Server) Run() error {
-	return s.httpServer.ListenAndServe()
+	return s.grpcServer.Serve()
 }
 
-func (s *Server) Stop(ctx context.Context) error {
-	return s.httpServer.Shutdown(ctx)
+func (s *Server) Stop(ctx context.Context) {
+	s.grpcServer.GracefulStop()
 }

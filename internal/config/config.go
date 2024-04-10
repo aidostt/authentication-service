@@ -21,16 +21,17 @@ const (
 type (
 	Config struct {
 		Environment string
-		Mongo       MongoConfig
-		HTTP        HTTPConfig
-		Auth        AuthConfig
+		Mongo       MongoConfig `yaml:"mongo"`
+		HTTP        HTTPConfig  `yaml:"http"`
+		Auth        AuthConfig  `yaml:"auth"`
+		Grpc        GrpcConfig  `yaml:"grpc"`
 	}
 
 	MongoConfig struct {
 		URI      string
 		User     string
 		Password string
-		Name     string `mapstructure:"databaseName"`
+		Name     string `yaml:"databaseName"`
 	}
 
 	AuthConfig struct {
@@ -39,17 +40,22 @@ type (
 	}
 
 	JWTConfig struct {
-		AccessTokenTTL  time.Duration `mapstructure:"accessTokenTTL"`
-		RefreshTokenTTL time.Duration `mapstructure:"refreshTokenTTL"`
+		AccessTokenTTL  time.Duration `yaml:"accessTokenTTL"`
+		RefreshTokenTTL time.Duration `yaml:"refreshTokenTTL"`
 		SigningKey      string
 	}
 
 	HTTPConfig struct {
-		Host               string        `mapstructure:"host"`
-		Port               string        `mapstructure:"port"`
-		ReadTimeout        time.Duration `mapstructure:"readTimeout"`
-		WriteTimeout       time.Duration `mapstructure:"writeTimeout"`
-		MaxHeaderMegabytes int           `mapstructure:"maxHeaderBytes"`
+		Host               string        `yaml:"host"`
+		Port               string        `yaml:"port"`
+		ReadTimeout        time.Duration `yaml:"readTimeout"`
+		WriteTimeout       time.Duration `yaml:"writeTimeout"`
+		MaxHeaderMegabytes int           `yaml:"maxHeaderBytes"`
+	}
+	GrpcConfig struct {
+		Host    string        `yaml:"host"`
+		Port    int           `yaml:"port"`
+		Timeout time.Duration `yaml:"timeout"`
 	}
 )
 

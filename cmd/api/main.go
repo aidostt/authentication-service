@@ -1,12 +1,12 @@
 package main
 
 import (
-	"authentication-service/internal/app"
+	"authentication-service/internal/app/http"
 )
 
 const configsDir = "configs"
 const envDir = ".env"
 
 func main() {
-	app.Run(configsDir, envDir)
+	http.Run(configsDir, envDir)
 }

@@ -1,4 +1,4 @@
-package delivery
+package http_delivery
 
 import (
 	"github.com/gin-gonic/gin"

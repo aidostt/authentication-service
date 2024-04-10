@@ -1,10 +1,10 @@
-package app
+package http
 
 import (
 	"authentication-service/internal/config"
-	"authentication-service/internal/delivery"
+	http "authentication-service/internal/delivery/http"
 	"authentication-service/internal/repository"
-	"authentication-service/internal/server"
+	server "authentication-service/internal/server/http"
 	"authentication-service/internal/service"
 	"authentication-service/pkg/database/mongodb"
 	"authentication-service/pkg/hash"
@@ -12,7 +12,7 @@ import (
 	auth "authentication-service/pkg/manager"
 	"context"
 	"errors"
-	"net/http"
+	netHttp "net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -55,13 +55,13 @@ func Run(configPath, envPath string) {
 		Environment:     cfg.Environment,
 		Domain:          cfg.HTTP.Host,
 	})
-	handlers := delivery.NewHandler(services, tokenManager)
+	handlers := http.NewHandler(services, tokenManager)
 
 	// HTTP Server
 	srv := server.NewServer(cfg, handlers.Init())
 
 	go func() {
-		if err := srv.Run(); !errors.Is(err, http.ErrServerClosed) {
+		if err := srv.Run(); !errors.Is(err, netHttp.ErrServerClosed) {
 			logger.Errorf("error occurred while running http server: %s\n", err.Error())
 		}
 	}()
