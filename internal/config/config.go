@@ -9,13 +9,17 @@ import (
 )
 
 const (
+	defaultGRPCPort = "443"
+
 	defaultHTTPPort               = "8000"
 	defaultHTTPRWTimeout          = 10 * time.Second
 	defaultHTTPMaxHeaderMegabytes = 1
 	defaultAccessTokenTTL         = 15 * time.Minute
 	defaultRefreshTokenTTL        = 12 * time.Hour
 
-	EnvLocal = "local"
+	envLocal = "local"
+	envDev   = "dev"
+	envProd  = "prod"
 )
 
 type (
@@ -24,7 +28,7 @@ type (
 		Mongo       MongoConfig `yaml:"mongo"`
 		HTTP        HTTPConfig  `yaml:"http"`
 		Auth        AuthConfig  `yaml:"auth"`
-		Grpc        GrpcConfig  `yaml:"grpc"`
+		GRPC        GRPCConfig  `yaml:"grpc"`
 	}
 
 	MongoConfig struct {
@@ -52,9 +56,9 @@ type (
 		WriteTimeout       time.Duration `yaml:"writeTimeout"`
 		MaxHeaderMegabytes int           `yaml:"maxHeaderBytes"`
 	}
-	GrpcConfig struct {
+	GRPCConfig struct {
 		Host    string        `yaml:"host"`
-		Port    int           `yaml:"port"`
+		Port    string        `yaml:"port"`
 		Timeout time.Duration `yaml:"timeout"`
 	}
 )
@@ -86,6 +90,10 @@ func unmarshal(cfg *Config) error {
 		return err
 	}
 
+	if err := viper.UnmarshalKey("grpc", &cfg.GRPC); err != nil {
+		return err
+	}
+
 	return viper.UnmarshalKey("auth", &cfg.Auth.JWT)
 }
 
@@ -98,8 +106,9 @@ func setFromEnv(cfg *Config) {
 	cfg.Auth.JWT.SigningKey = os.Getenv("JWT_SIGNING_KEY")
 
 	cfg.HTTP.Host = os.Getenv("HTTP_HOST")
+	cfg.GRPC.Host = os.Getenv("GRPC_HOST")
 
-	cfg.Environment = "development"
+	cfg.Environment = envDev
 }
 
 func parseConfigFile(folder, env string) error {
@@ -125,6 +134,7 @@ func loadEnvVariables(envPath string) {
 }
 
 func populateDefaults() {
+	viper.SetDefault("grpc.port", defaultGRPCPort)
 	viper.SetDefault("http.port", defaultHTTPPort)
 	viper.SetDefault("http.max_header_megabytes", defaultHTTPMaxHeaderMegabytes)
 	viper.SetDefault("http.timeouts.read", defaultHTTPRWTimeout)

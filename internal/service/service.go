@@ -2,45 +2,26 @@ package service
 
 import (
 	"authentication-service/internal/repository"
+	"authentication-service/internal/service/auth_service"
 	"authentication-service/pkg/hash"
 	auth "authentication-service/pkg/manager"
 	"context"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/aidostt/protos/gen/go/reservista"
 	"time"
 )
 
-type UserSignUpInput struct {
-	Name     string
-	Email    string
-	Phone    string
-	Password string
-}
-
-type UserSignInInput struct {
-	Email    string
-	Password string
-}
-
-type TokenPair struct {
-	AccessToken  string
-	RefreshToken string
-}
-
-type Session interface {
-	RefreshTokens(context.Context, string) (TokenPair, error)
-	CreateSession(context.Context, primitive.ObjectID) (TokenPair, error)
+type Authentication interface {
+	SignUp(context.Context, *reservista.RegisterRequest) (*reservista.TokenResponse, error)
+	SignIn(context.Context, *reservista.SignInRequest) (*reservista.TokenResponse, error)
+	Refresh(context.Context, *reservista.TokenRequest) (*reservista.TokenResponse, error)
+	CreateSession(context.Context, *reservista.IsAdminRequest) (*reservista.TokenResponse, error)
 	GetToken(context.Context, string) (string, error)
-}
-
-type Users interface {
-	SignUp(context.Context, UserSignUpInput) (TokenPair, error)
-	SignIn(context.Context, UserSignInInput) (TokenPair, error)
-	CreateSession(context.Context, primitive.ObjectID) (TokenPair, error)
+	IsAdmin(context.Context, *reservista.IsAdminRequest) (*reservista.IsAdminResponse, error)
+	SignOut(ctx context.Context, request *reservista.TokenRequest) (*reservista.SignOutResponse, error)
 }
 
 type Services struct {
-	Users   Users
-	Session Session
+	Auth Authentication
 }
 
 type Dependencies struct {
@@ -54,10 +35,8 @@ type Dependencies struct {
 }
 
 func NewServices(deps Dependencies) *Services {
-	sessionService := NewSessionsService(deps.Repos.Sessions, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain)
-	usersService := NewUsersService(deps.Repos.Users, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain, sessionService)
+	authService := auth_service.NewAuthService(deps.Repos.Users, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain)
 	return &Services{
-		Users:   usersService,
-		Session: sessionService,
+		Auth: authService,
 	}
 }

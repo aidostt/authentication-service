@@ -12,5 +12,5 @@ auth:
   refreshTokenTTL: 12h
 
 grpc:
-  port: 44044
+  port: 4040
   timeout: 5s
