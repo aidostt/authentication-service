@@ -75,6 +75,5 @@ func (h *Handler) IsAdmin(context.Context, *reservista.IsAdminRequest) (*reservi
 	return nil, nil
 }
 func (h *Handler) SignOut(ctx context.Context, tokens *reservista.TokenRequest) (*reservista.SignOutResponse, error) {
-	//TODO: implement signOut
 	return nil, nil
 }
