@@ -1,13 +1,12 @@
 package main
 
 import (
-	"authentication-service/internal/app/grpc"
+	"authentication-service/internal/app"
 )
 
 const configsDir = "configs"
 const envDir = ".env"
 
 func main() {
-	//http.Run(configsDir, envDir)
-	grpc.Run(configsDir, envDir)
+	app.Run(configsDir, envDir)
 }

@@ -1,22 +1,24 @@
-package http
+package app
 
 import (
 	"authentication-service/internal/config"
-	http "authentication-service/internal/delivery/http"
+	"authentication-service/internal/delivery/grpc/auth"
 	"authentication-service/internal/repository"
-	server "authentication-service/internal/server/http"
+	"authentication-service/internal/server"
 	"authentication-service/internal/service"
 	"authentication-service/pkg/database/mongodb"
 	"authentication-service/pkg/hash"
 	"authentication-service/pkg/logger"
-	auth "authentication-service/pkg/manager"
+	authManager "authentication-service/pkg/manager"
 	"context"
 	"errors"
+	"fmt"
+	"github.com/aidostt/protos/gen/go/reservista"
+	"net"
 	netHttp "net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func Run(configPath, envPath string) {
@@ -36,9 +38,9 @@ func Run(configPath, envPath string) {
 	}
 	db := mongoClient.Database(cfg.Mongo.Name)
 
-	hasher := hash.NewSHA1Hasher(cfg.Auth.PasswordSalt)
+	sha1 := hash.NewSHA1Hasher(cfg.Auth.PasswordSalt)
 
-	tokenManager, err := auth.NewManager(cfg.Auth.JWT.SigningKey)
+	tokenManager, err := authManager.NewManager(cfg.Auth.JWT.SigningKey)
 	if err != nil {
 		logger.Error(err)
 
@@ -48,42 +50,40 @@ func Run(configPath, envPath string) {
 	repos := repository.NewModels(db)
 	services := service.NewServices(service.Dependencies{
 		Repos:           repos,
-		Hasher:          hasher,
+		Hasher:          sha1,
 		TokenManager:    tokenManager,
 		AccessTokenTTL:  cfg.Auth.JWT.AccessTokenTTL,
 		RefreshTokenTTL: cfg.Auth.JWT.RefreshTokenTTL,
 		Environment:     cfg.Environment,
-		Domain:          cfg.HTTP.Host,
+		Domain:          cfg.GRPC.Host,
 	})
-	handlers := http.NewHandler(services, tokenManager)
+	delivery := auth.NewAuthHandler(services)
 
-	// HTTP Server
-	srv := server.NewServer(cfg, handlers.Init())
-
+	// gRPC Server
+	srv := server.NewServer()
+	reservista.RegisterAuthServer(srv.GrpcServer, delivery)
+	l, err := net.Listen("tcp", fmt.Sprintf("%v:%v", cfg.GRPC.Host, cfg.GRPC.Port))
+	if err != nil {
+		logger.Errorf("error occurred while getting listener for the server: %s\n", err.Error())
+		return
+	}
 	go func() {
-		if err := srv.Run(); !errors.Is(err, netHttp.ErrServerClosed) {
-			logger.Errorf("error occurred while running http server: %s\n", err.Error())
+		if err := srv.Run(l); err != nil && !errors.Is(err, netHttp.ErrServerClosed) {
+			logger.Errorf("error occurred while running grpc server: %s\n", err.Error())
 		}
 	}()
 
-	logger.Info("Server started")
+	logger.Info("Server started at: " + cfg.GRPC.Host + ":" + cfg.GRPC.Port)
 
 	// Graceful Shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 
 	<-quit
-
-	const timeout = 5 * time.Second
-
-	ctx, shutdown := context.WithTimeout(context.Background(), timeout)
-	defer shutdown()
-
-	if err := srv.Stop(ctx); err != nil {
-		logger.Errorf("failed to stop server: %v", err)
-	}
-
+	srv.Stop()
+	logger.Info("Stopping server at: " + cfg.GRPC.Host + ":" + cfg.GRPC.Port)
 	if err := mongoClient.Disconnect(context.Background()); err != nil {
 		logger.Error(err.Error())
 	}
+
 }

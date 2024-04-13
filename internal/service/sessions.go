@@ -20,7 +20,7 @@ type SessionService struct {
 	domain string
 }
 
-func NewSessionsService(repo repository.Sessions, hasher hash.PasswordHasher, tokenManager auth.TokenManager, accessTTL, refreshTTL time.Duration, domain string) *SessionService {
+func NewSessionService(repo repository.Sessions, hasher hash.PasswordHasher, tokenManager auth.TokenManager, accessTTL, refreshTTL time.Duration, domain string) *SessionService {
 	return &SessionService{
 		repo:            repo,
 		hasher:          hasher,
@@ -31,13 +31,8 @@ func NewSessionsService(repo repository.Sessions, hasher hash.PasswordHasher, to
 	}
 }
 
-func (s *SessionService) RefreshTokens(ctx context.Context, refreshToken string) (res TokenPair, err error) {
-	session, err := s.repo.GetByRefreshToken(ctx, refreshToken)
-	if err != nil {
-		return TokenPair{}, err
-	}
-
-	return s.CreateSession(ctx, session.UserID)
+func (s *SessionService) Refresh(ctx context.Context, id primitive.ObjectID) (TokenPair, error) {
+	return s.CreateSession(ctx, id)
 }
 
 func (s *SessionService) CreateSession(ctx context.Context, userId primitive.ObjectID) (res TokenPair, err error) {
@@ -62,11 +57,11 @@ func (s *SessionService) CreateSession(ctx context.Context, userId primitive.Obj
 	return
 }
 
-func (s *SessionService) GetToken(ctx context.Context, RT string) (string, error) {
+func (s *SessionService) GetSession(ctx context.Context, RT string) (*domain.Session, error) {
 	session, err := s.repo.GetByRefreshToken(ctx, RT)
 	if err != nil {
-		return "", err
+		return nil, err
 
 	}
-	return session.RefreshToken, nil
+	return session, nil
 }

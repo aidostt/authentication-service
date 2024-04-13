@@ -8,9 +8,9 @@ import (
 )
 
 type Users interface {
-	Create(ctx context.Context, user *domain.User) error
-	GetByEmail(ctx context.Context, email string) (domain.User, error)
-	//TODO: delete user
+	Create(context.Context, *domain.User) error
+	GetByEmail(context.Context, string) (domain.User, error)
+	Delete(context.Context, primitive.ObjectID, string) error
 }
 type Sessions interface {
 	SetSession(ctx context.Context, session domain.Session) error

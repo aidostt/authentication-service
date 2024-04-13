@@ -50,3 +50,21 @@ func (r *UsersRepo) GetByEmail(ctx context.Context, email string) (domain.User, 
 
 	return user, nil
 }
+
+func (r *UsersRepo) Delete(ctx context.Context, id primitive.ObjectID, email string) error {
+	// Create a filter to match the document to delete
+	filter := bson.M{"_id": id, "email": email}
+
+	// Attempt to delete the document
+	result, err := r.db.DeleteOne(ctx, filter)
+	if err != nil {
+		return err // Return the error if deletion failed
+	}
+
+	// Check if the document was actually deleted
+	if result.DeletedCount == 0 {
+		return errors.New("no user found with the given ID")
+	}
+
+	return nil // Return nil if deletion was successful
+}
