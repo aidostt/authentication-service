@@ -25,17 +25,17 @@ const (
 type (
 	Config struct {
 		Environment string
-		Mongo       MongoConfig `yaml:"mongo"`
-		HTTP        HTTPConfig  `yaml:"http"`
-		Auth        AuthConfig  `yaml:"auth"`
-		GRPC        GRPCConfig  `yaml:"grpc"`
+		Mongo       MongoConfig `mapstructure:"mongo"`
+		HTTP        HTTPConfig  `mapstructure:"http"`
+		Auth        AuthConfig  `mapstructure:"auth"`
+		GRPC        GRPCConfig  `mapstructure:"grpc"`
 	}
 
 	MongoConfig struct {
 		URI      string
 		User     string
 		Password string
-		Name     string `yaml:"databaseName"`
+		Name     string `mapstructure:"databaseName"`
 	}
 
 	AuthConfig struct {
@@ -44,22 +44,22 @@ type (
 	}
 
 	JWTConfig struct {
-		AccessTokenTTL  time.Duration `yaml:"accessTokenTTL"`
-		RefreshTokenTTL time.Duration `yaml:"refreshTokenTTL"`
+		AccessTokenTTL  time.Duration `mapstructure:"accessTokenTTL"`
+		RefreshTokenTTL time.Duration `mapstructure:"refreshTokenTTL"`
 		SigningKey      string
 	}
 
 	HTTPConfig struct {
-		Host               string        `yaml:"host"`
-		Port               string        `yaml:"port"`
-		ReadTimeout        time.Duration `yaml:"readTimeout"`
-		WriteTimeout       time.Duration `yaml:"writeTimeout"`
-		MaxHeaderMegabytes int           `yaml:"maxHeaderBytes"`
+		Host               string        `mapstructure:"host"`
+		Port               string        `mapstructure:"port"`
+		ReadTimeout        time.Duration `mapstructure:"readTimeout"`
+		WriteTimeout       time.Duration `mapstructure:"writeTimeout"`
+		MaxHeaderMegabytes int           `mapstructure:"maxHeaderBytes"`
 	}
 	GRPCConfig struct {
-		Host    string        `yaml:"host"`
-		Port    string        `yaml:"port"`
-		Timeout time.Duration `yaml:"timeout"`
+		Host    string        `mapstructure:"host"`
+		Port    string        `mapstructure:"port"`
+		Timeout time.Duration `mapstructure:"timeout"`
 	}
 )
 
@@ -76,7 +76,6 @@ func Init(configsDir, envDir string) (*Config, error) {
 	}
 
 	setFromEnv(&cfg)
-
 	return &cfg, nil
 }
 
