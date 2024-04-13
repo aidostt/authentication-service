@@ -43,7 +43,7 @@ func (s *UserService) SignUp(ctx context.Context, name string, surname string, p
 		Surname:  surname,
 		Phone:    phone,
 		Email:    email,
-		Password: passwordHash,
+		Password: string(passwordHash),
 	}
 	if err = s.repo.Create(ctx, user); err != nil {
 		return primitive.ObjectID{}, err
@@ -52,14 +52,19 @@ func (s *UserService) SignUp(ctx context.Context, name string, surname string, p
 }
 func (s *UserService) SignIn(ctx context.Context, email string, password string) (primitive.ObjectID, error) {
 	user, err := s.repo.GetByEmail(ctx, email)
-	//TODO: compare passwords
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
 			return primitive.ObjectID{}, err
 		}
 		return primitive.ObjectID{}, err
 	}
-
+	ok, err := s.hasher.Matches(password, []byte(user.Password))
+	if err != nil {
+		return primitive.ObjectID{}, err
+	}
+	if !ok {
+		return primitive.ObjectID{}, domain.ErrWrongPassword
+	}
 	return user.ID, err
 }
 

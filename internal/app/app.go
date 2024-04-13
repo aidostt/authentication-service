@@ -38,7 +38,7 @@ func Run(configPath, envPath string) {
 	}
 	db := mongoClient.Database(cfg.Mongo.Name)
 
-	sha1 := hash.NewSHA1Hasher(cfg.Auth.PasswordSalt)
+	hasher := hash.NewHasher(cfg.Auth.PasswordCost)
 
 	tokenManager, err := authManager.NewManager(cfg.Auth.JWT.SigningKey)
 	if err != nil {
@@ -50,7 +50,7 @@ func Run(configPath, envPath string) {
 	repos := repository.NewModels(db)
 	services := service.NewServices(service.Dependencies{
 		Repos:           repos,
-		Hasher:          sha1,
+		Hasher:          hasher,
 		TokenManager:    tokenManager,
 		AccessTokenTTL:  cfg.Auth.JWT.AccessTokenTTL,
 		RefreshTokenTTL: cfg.Auth.JWT.RefreshTokenTTL,

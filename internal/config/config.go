@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/viper"
 	"log"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -40,7 +41,7 @@ type (
 
 	AuthConfig struct {
 		JWT          JWTConfig
-		PasswordSalt string
+		PasswordCost int
 	}
 
 	JWTConfig struct {
@@ -101,7 +102,7 @@ func setFromEnv(cfg *Config) {
 	cfg.Mongo.User = os.Getenv("MONGO_USER")
 	cfg.Mongo.Password = os.Getenv("MONGO_PASS")
 
-	cfg.Auth.PasswordSalt = os.Getenv("PASSWORD_SALT")
+	cfg.Auth.PasswordCost, _ = strconv.Atoi(os.Getenv("PASSWORD_SALT"))
 	cfg.Auth.JWT.SigningKey = os.Getenv("JWT_SIGNING_KEY")
 
 	cfg.HTTP.Host = os.Getenv("HTTP_HOST")

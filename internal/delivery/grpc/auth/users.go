@@ -51,11 +51,16 @@ func (h *Handler) SignIn(ctx context.Context, input *reservista.SignInRequest) (
 	}
 	id, err := h.services.Users.SignIn(ctx, input.GetEmail(), input.GetPassword())
 	if err != nil {
-		if errors.Is(err, domain.ErrUserNotFound) {
-			return nil, status.Error(codes.AlreadyExists, domain.ErrUserNotFound.Error())
-		}
 		logger.Error(err)
-		return nil, status.Error(codes.Internal, "failed to sign in")
+		switch {
+		case errors.Is(err, domain.ErrWrongPassword):
+			return nil, status.Error(codes.InvalidArgument, domain.ErrWrongPassword.Error())
+		case errors.Is(err, domain.ErrUserNotFound):
+			return nil, status.Error(codes.NotFound, domain.ErrUserNotFound.Error())
+		default:
+			return nil, status.Error(codes.Internal, "failed to sign in")
+		}
+
 	}
 	tokens, err := h.services.Sessions.CreateSession(ctx, id)
 	if err != nil {
