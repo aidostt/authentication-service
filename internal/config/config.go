@@ -27,7 +27,6 @@ type (
 	Config struct {
 		Environment string
 		Mongo       MongoConfig `mapstructure:"mongo"`
-		HTTP        HTTPConfig  `mapstructure:"http"`
 		Auth        AuthConfig  `mapstructure:"auth"`
 		GRPC        GRPCConfig  `mapstructure:"grpc"`
 	}
@@ -50,13 +49,6 @@ type (
 		SigningKey      string
 	}
 
-	HTTPConfig struct {
-		Host               string        `mapstructure:"host"`
-		Port               string        `mapstructure:"port"`
-		ReadTimeout        time.Duration `mapstructure:"readTimeout"`
-		WriteTimeout       time.Duration `mapstructure:"writeTimeout"`
-		MaxHeaderMegabytes int           `mapstructure:"maxHeaderBytes"`
-	}
 	GRPCConfig struct {
 		Host    string        `mapstructure:"host"`
 		Port    string        `mapstructure:"port"`
@@ -86,10 +78,6 @@ func unmarshal(cfg *Config) error {
 		return err
 	}
 
-	if err := viper.UnmarshalKey("http", &cfg.HTTP); err != nil {
-		return err
-	}
-
 	if err := viper.UnmarshalKey("grpc", &cfg.GRPC); err != nil {
 		return err
 	}
@@ -105,7 +93,6 @@ func setFromEnv(cfg *Config) {
 	cfg.Auth.PasswordCost, _ = strconv.Atoi(os.Getenv("PASSWORD_SALT"))
 	cfg.Auth.JWT.SigningKey = os.Getenv("JWT_SIGNING_KEY")
 
-	cfg.HTTP.Host = os.Getenv("HTTP_HOST")
 	cfg.GRPC.Host = os.Getenv("GRPC_HOST")
 
 	cfg.Environment = envDev

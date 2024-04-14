@@ -1,15 +1,15 @@
-package auth
+package delivery
 
 import (
 	"authentication-service/internal/domain"
 	"context"
 	"errors"
-	"github.com/aidostt/protos/gen/go/reservista"
+	"github.com/aidostt/protos/gen/go/reservista/authentication"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func (h *Handler) Refresh(ctx context.Context, tokens *reservista.TokenRequest) (*reservista.TokenResponse, error) {
+func (h *Handler) Refresh(ctx context.Context, tokens *proto_auth.TokenRequest) (*proto_auth.TokenResponse, error) {
 	if tokens.Jwt == "" {
 		return nil, status.Error(codes.Unauthenticated, "unauthorized access")
 	}
@@ -35,5 +35,5 @@ func (h *Handler) Refresh(ctx context.Context, tokens *reservista.TokenRequest) 
 		}
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
-	return &reservista.TokenResponse{Jwt: newTokens.AccessToken, Rt: newTokens.RefreshToken}, nil
+	return &proto_auth.TokenResponse{Jwt: newTokens.AccessToken, Rt: newTokens.RefreshToken}, nil
 }

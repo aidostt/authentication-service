@@ -63,8 +63,43 @@ func (r *UsersRepo) Delete(ctx context.Context, id primitive.ObjectID, email str
 
 	// Check if the document was actually deleted
 	if result.DeletedCount == 0 {
-		return errors.New("no user found with the given ID")
+		return domain.ErrUserNotFound
 	}
 
 	return nil // Return nil if deletion was successful
+}
+
+func (r *UsersRepo) GetByID(ctx context.Context, userID primitive.ObjectID) (domain.User, error) {
+	var user domain.User
+	if err := r.db.FindOne(ctx, bson.M{
+		"_id": userID,
+	}).Decode(&user); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return domain.User{}, domain.ErrUserNotFound
+		}
+
+		return domain.User{}, err
+	}
+
+	return user, nil
+}
+
+func (r *UsersRepo) Update(ctx context.Context, user domain.User) error {
+	filter := bson.M{"_id": user.ID}
+	update := bson.M{"$set": bson.M{
+		"name":     user.Name,
+		"surname":  user.Surname,
+		"phone":    user.Phone,
+		"email":    user.Email,
+		"password": user.Password,
+	}}
+
+	result, err := r.db.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.ModifiedCount == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
 }

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
@@ -58,18 +57,4 @@ func (r *SessionRepo) GetByRefreshToken(ctx context.Context, refreshToken string
 	}
 
 	return session, nil
-}
-func (r *SessionRepo) GetByUserID(ctx context.Context, userID primitive.ObjectID) (domain.User, error) {
-	var user domain.User
-	if err := r.db.FindOne(ctx, bson.M{
-		"userID": userID,
-	}).Decode(&user); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return domain.User{}, domain.ErrUserNotFound
-		}
-
-		return domain.User{}, err
-	}
-
-	return user, nil
 }

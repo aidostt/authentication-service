@@ -2,7 +2,7 @@ package app
 
 import (
 	"authentication-service/internal/config"
-	"authentication-service/internal/delivery/grpc/auth"
+	"authentication-service/internal/delivery"
 	"authentication-service/internal/repository"
 	"authentication-service/internal/server"
 	"authentication-service/internal/service"
@@ -13,7 +13,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/aidostt/protos/gen/go/reservista"
 	"net"
 	netHttp "net/http"
 	"os"
@@ -57,11 +56,12 @@ func Run(configPath, envPath string) {
 		Environment:     cfg.Environment,
 		Domain:          cfg.GRPC.Host,
 	})
-	delivery := auth.NewAuthHandler(services)
+	handlers := delivery.NewHandler(services)
 
 	// gRPC Server
 	srv := server.NewServer()
-	reservista.RegisterAuthServer(srv.GrpcServer, delivery)
+	srv.RegisterServers(handlers)
+
 	l, err := net.Listen("tcp", fmt.Sprintf("%v:%v", cfg.GRPC.Host, cfg.GRPC.Port))
 	if err != nil {
 		logger.Errorf("error occurred while getting listener for the server: %s\n", err.Error())

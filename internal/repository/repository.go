@@ -11,11 +11,12 @@ type Users interface {
 	Create(context.Context, *domain.User) error
 	GetByEmail(context.Context, string) (domain.User, error)
 	Delete(context.Context, primitive.ObjectID, string) error
+	GetByID(context.Context, primitive.ObjectID) (domain.User, error)
+	Update(context.Context, domain.User) error
 }
 type Sessions interface {
 	SetSession(ctx context.Context, session domain.Session) error
 	GetByRefreshToken(ctx context.Context, refreshToken string) (*domain.Session, error)
-	GetByUserID(ctx context.Context, userID primitive.ObjectID) (domain.User, error)
 }
 
 type Models struct {

@@ -7,7 +7,6 @@ import (
 	authManager "authentication-service/pkg/manager"
 	"context"
 	"errors"
-	"github.com/aidostt/protos/gen/go/reservista"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
@@ -33,7 +32,6 @@ func NewUserService(repo repository.Users, hasher hash.PasswordHasher, tokenMana
 }
 
 func (s *UserService) SignUp(ctx context.Context, name string, surname string, phone string, email string, password string) (primitive.ObjectID, error) {
-
 	passwordHash, err := s.hasher.Hash(password)
 	if err != nil {
 		return primitive.ObjectID{}, err
@@ -68,6 +66,41 @@ func (s *UserService) SignIn(ctx context.Context, email string, password string)
 	return user.ID, err
 }
 
-func (s *UserService) IsAdmin(ctx context.Context, input *reservista.IsAdminRequest) (bool, error) {
+func (s *UserService) IsAdmin(ctx context.Context, userID string) (bool, error) {
 	return false, nil
+}
+
+func (s *UserService) GetByID(ctx context.Context, userID string) (domain.User, error) {
+	id, err := s.tokenManager.HexToObjectID(userID)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return s.repo.GetByID(ctx, id)
+}
+
+func (s *UserService) Update(ctx context.Context, userID, name, surname, phone, email, password string) error {
+	id, err := s.tokenManager.HexToObjectID(userID)
+	if err != nil {
+		return err
+	}
+	passwordHash, err := s.hasher.Hash(password)
+	if err != nil {
+		return err
+	}
+	usr := domain.User{
+		ID:       id,
+		Name:     name,
+		Surname:  surname,
+		Phone:    phone,
+		Email:    email,
+		Password: string(passwordHash)}
+
+	return s.repo.Update(ctx, usr)
+}
+func (s *UserService) Delete(ctx context.Context, userID, email string) error {
+	id, err := s.tokenManager.HexToObjectID(userID)
+	if err != nil {
+		return err
+	}
+	return s.repo.Delete(ctx, id, email)
 }

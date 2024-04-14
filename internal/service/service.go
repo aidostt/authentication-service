@@ -6,7 +6,6 @@ import (
 	"authentication-service/pkg/hash"
 	auth "authentication-service/pkg/manager"
 	"context"
-	"github.com/aidostt/protos/gen/go/reservista"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
@@ -30,9 +29,12 @@ type UserSignInInput struct {
 }
 
 type Users interface {
+	GetByID(context.Context, string) (domain.User, error)
+	Update(context.Context, string, string, string, string, string, string) error
+	Delete(context.Context, string, string) error
 	SignUp(context.Context, string, string, string, string, string) (primitive.ObjectID, error)
 	SignIn(context.Context, string, string) (primitive.ObjectID, error)
-	IsAdmin(context.Context, *reservista.IsAdminRequest) (bool, error)
+	IsAdmin(context.Context, string) (bool, error)
 }
 
 type Sessions interface {
