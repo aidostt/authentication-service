@@ -21,11 +21,10 @@ func NewSessionRepo(db *mongo.Database) *SessionRepo {
 }
 
 func (r *SessionRepo) SetSession(ctx context.Context, session domain.Session) error {
-	filter := bson.M{"_id": session.UserID}
+	filter := bson.M{"userID": session.UserID}
 	update := bson.M{
 		"$set": bson.M{
 			"lastVisitAt":  time.Now(),
-			"userID":       session.UserID,
 			"refreshToken": session.RefreshToken,
 			"expiresAt":    session.ExpiredAt,
 		},

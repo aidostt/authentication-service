@@ -19,9 +19,13 @@ func (h *Handler) Refresh(ctx context.Context, tokens *proto_auth.TokenRequest) 
 
 	session, err := h.services.Sessions.GetSession(ctx, tokens.Rt)
 	if err != nil {
-		if errors.Is(err, domain.ErrUserNotFound) {
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
 			return nil, status.Error(codes.Unauthenticated, "unauthorized access")
+		case errors.Is(err, domain.ErrSessionExpired):
+			return nil, status.Error(codes.Unauthenticated, domain.ErrSessionExpired.Error())
 		}
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if session.RefreshToken != tokens.Rt {

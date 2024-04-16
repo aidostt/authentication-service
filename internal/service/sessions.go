@@ -59,9 +59,15 @@ func (s *SessionService) CreateSession(ctx context.Context, userId primitive.Obj
 
 func (s *SessionService) GetSession(ctx context.Context, RT string) (*domain.Session, error) {
 	session, err := s.repo.GetByRefreshToken(ctx, RT)
+
 	if err != nil {
 		return nil, err
 
+	}
+	// Check if the session has been retrieved and if it is expired
+	if session != nil && session.ExpiredAt.After(time.Now()) {
+		// Session is expired, handle accordingly
+		return nil, domain.ErrSessionExpired
 	}
 	return session, nil
 }

@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 	"github.com/aidostt/protos/gen/go/reservista/authentication"
-	proto_user "github.com/aidostt/protos/gen/go/reservista/user"
+	"github.com/aidostt/protos/gen/go/reservista/user"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
