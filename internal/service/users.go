@@ -78,6 +78,10 @@ func (s *UserService) GetByID(ctx context.Context, userID string) (domain.User, 
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s *UserService) GetByEmail(ctx context.Context, email string) (domain.User, error) {
+	return s.repo.GetByEmail(ctx, email)
+}
+
 func (s *UserService) Update(ctx context.Context, userID, name, surname, phone, email, password string) error {
 	id, err := s.tokenManager.HexToObjectID(userID)
 	if err != nil {

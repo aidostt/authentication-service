@@ -65,7 +65,7 @@ func (s *SessionService) GetSession(ctx context.Context, RT string) (*domain.Ses
 
 	}
 	// Check if the session has been retrieved and if it is expired
-	if session != nil && session.ExpiredAt.After(time.Now()) {
+	if session != nil && session.ExpiredAt.Before(time.Now()) {
 		// Session is expired, handle accordingly
 		return nil, domain.ErrSessionExpired
 	}

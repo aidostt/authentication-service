@@ -30,6 +30,7 @@ type UserSignInInput struct {
 
 type Users interface {
 	GetByID(context.Context, string) (domain.User, error)
+	GetByEmail(context.Context, string) (domain.User, error)
 	Update(context.Context, string, string, string, string, string, string) error
 	Delete(context.Context, string, string) error
 	SignUp(context.Context, string, string, string, string, string) (primitive.ObjectID, error)

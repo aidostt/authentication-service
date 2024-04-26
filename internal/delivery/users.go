@@ -98,6 +98,27 @@ func (h *Handler) GetByID(ctx context.Context, input *proto_user.GetRequest) (*p
 	}, nil
 }
 
+func (h *Handler) GetByEmail(ctx context.Context, input *proto_user.GetRequest) (*proto_user.UserResponse, error) {
+	if input.Email == "" {
+		return nil, status.Error(codes.InvalidArgument, "email is required")
+	}
+	user, err := h.services.Users.GetByEmail(ctx, input.GetEmail())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			return nil, status.Error(codes.InvalidArgument, "wrong email")
+		default:
+			return nil, status.Error(codes.Internal, "failed to get by email")
+		}
+	}
+	return &proto_user.UserResponse{
+		Name:    user.Name,
+		Surname: user.Surname,
+		Phone:   user.Phone,
+		Email:   user.Email,
+	}, nil
+}
+
 func (h *Handler) Update(ctx context.Context, input *proto_user.UpdateRequest) (*proto_user.StatusResponse, error) {
 	if input.Id == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
