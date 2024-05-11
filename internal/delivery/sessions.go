@@ -17,7 +17,7 @@ func (h *Handler) Refresh(ctx context.Context, tokens *proto_auth.TokenRequest) 
 		return nil, status.Error(codes.Unauthenticated, "unauthorized access")
 	}
 
-	session, err := h.services.Sessions.GetSession(ctx, tokens.Rt)
+	session, err := h.services.Sessions.GetSession(ctx, tokens.GetRt())
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -28,16 +28,18 @@ func (h *Handler) Refresh(ctx context.Context, tokens *proto_auth.TokenRequest) 
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if session.RefreshToken != tokens.Rt {
+	if session.RefreshToken != tokens.GetRt() {
 		return nil, status.Error(codes.Unauthenticated, "unauthorized access")
 	}
 
-	newTokens, err := h.services.Sessions.CreateSession(ctx, session.UserID)
+	newTokens, err := h.services.Sessions.Refresh(ctx, session.UserID, tokens.GetJwt())
 	if err != nil {
-		if errors.Is(err, domain.ErrUserNotFound) {
+		switch {
+		case errors.Is(err, domain.ErrUnathorized), errors.Is(err, domain.ErrUserNotFound):
 			return nil, status.Error(codes.Unauthenticated, "unauthorized access")
+		default:
+			return nil, status.Error(codes.Unauthenticated, err.Error())
 		}
-		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 	return &proto_auth.TokenResponse{Jwt: newTokens.AccessToken, Rt: newTokens.RefreshToken}, nil
 }

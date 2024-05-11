@@ -9,9 +9,9 @@ import (
 
 type Users interface {
 	Create(context.Context, *domain.User) error
-	GetByEmail(context.Context, string) (domain.User, error)
+	GetByEmail(context.Context, string) (*domain.User, error)
 	Delete(context.Context, primitive.ObjectID, string) error
-	GetByID(context.Context, primitive.ObjectID) (domain.User, error)
+	GetByID(context.Context, primitive.ObjectID) (*domain.User, error)
 	Update(context.Context, domain.User) error
 }
 type Sessions interface {

@@ -29,7 +29,10 @@ func (h *Handler) SignUp(ctx context.Context, input *proto_auth.RegisterRequest)
 		return nil, status.Error(codes.InvalidArgument, "password is required")
 	}
 
-	id, err := h.services.Users.SignUp(ctx, input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword())
+	roles := []string{
+		domain.UserRole,
+	}
+	id, err := h.services.Users.SignUp(ctx, input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword(), roles)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
 			return nil, status.Error(codes.AlreadyExists, domain.ErrUserAlreadyExists.Error())
@@ -37,7 +40,7 @@ func (h *Handler) SignUp(ctx context.Context, input *proto_auth.RegisterRequest)
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to sign up")
 	}
-	tokens, err := h.services.Sessions.CreateSession(ctx, id)
+	tokens, err := h.services.Sessions.CreateSession(ctx, id, roles)
 	if err != nil {
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to create session")
@@ -51,7 +54,7 @@ func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (
 	if input.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "password is required")
 	}
-	id, err := h.services.Users.SignIn(ctx, input.GetEmail(), input.GetPassword())
+	id, roles, err := h.services.Users.SignIn(ctx, input.GetEmail(), input.GetPassword())
 	if err != nil {
 		logger.Error(err)
 		switch {
@@ -64,7 +67,9 @@ func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (
 		}
 
 	}
-	tokens, err := h.services.Sessions.CreateSession(ctx, id)
+	//TODO: retrieve roles from db
+	//TODO: put it into jwt token
+	tokens, err := h.services.Sessions.CreateSession(ctx, id, roles)
 	if err != nil {
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to create session")
@@ -72,9 +77,16 @@ func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (
 	return &proto_auth.TokenResponse{Jwt: tokens.AccessToken, Rt: tokens.RefreshToken}, nil
 }
 
-func (h *Handler) IsAdmin(context.Context, *proto_auth.IsAdminRequest) (*proto_auth.IsAdminResponse, error) {
+func (h *Handler) IsAdmin(ctx context.Context, input *proto_auth.IsAdminRequest) (*proto_auth.IsAdminResponse, error) {
 	//TODO: implement IsAdmin
-	return nil, nil
+	if input.UserId == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+	ok, err := h.services.Users.IsAdmin(ctx, input.GetUserId())
+	if err != nil {
+
+	}
+	return &proto_auth.IsAdminResponse{IsAdmin: ok}, nil
 }
 
 func (h *Handler) GetByID(ctx context.Context, input *proto_user.GetRequest) (*proto_user.UserResponse, error) {
@@ -138,7 +150,11 @@ func (h *Handler) Update(ctx context.Context, input *proto_user.UpdateRequest) (
 	if input.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "password is required")
 	}
-	err := h.services.Users.Update(ctx, input.GetId(), input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword())
+	//TODO: refactor
+	roles := []string{
+		domain.UserRole,
+	}
+	err := h.services.Users.Update(ctx, input.GetId(), input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword(), roles)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):

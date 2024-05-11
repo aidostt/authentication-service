@@ -26,6 +26,7 @@ const (
 type (
 	Config struct {
 		Environment string
+		Application string
 		Mongo       MongoConfig `mapstructure:"mongo"`
 		Auth        AuthConfig  `mapstructure:"auth"`
 		GRPC        GRPCConfig  `mapstructure:"grpc"`
@@ -96,6 +97,7 @@ func setFromEnv(cfg *Config) {
 	cfg.GRPC.Host = os.Getenv("GRPC_HOST")
 
 	cfg.Environment = envDev
+	cfg.Application = os.Getenv("APP")
 }
 
 func parseConfigFile(folder string) error {

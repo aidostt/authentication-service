@@ -17,10 +17,11 @@ type SessionService struct {
 	accessTokenTTL  time.Duration
 	refreshTokenTTL time.Duration
 
-	domain string
+	domain      string
+	application string
 }
 
-func NewSessionService(repo repository.Sessions, hasher hash.PasswordHasher, tokenManager auth.TokenManager, accessTTL, refreshTTL time.Duration, domain string) *SessionService {
+func NewSessionService(repo repository.Sessions, hasher hash.PasswordHasher, tokenManager auth.TokenManager, accessTTL, refreshTTL time.Duration, domain string, application string) *SessionService {
 	return &SessionService{
 		repo:            repo,
 		hasher:          hasher,
@@ -28,15 +29,24 @@ func NewSessionService(repo repository.Sessions, hasher hash.PasswordHasher, tok
 		accessTokenTTL:  accessTTL,
 		refreshTokenTTL: refreshTTL,
 		domain:          domain,
+		application:     application,
 	}
 }
 
-func (s *SessionService) Refresh(ctx context.Context, id primitive.ObjectID) (TokenPair, error) {
-	return s.CreateSession(ctx, id)
+func (s *SessionService) Refresh(ctx context.Context, userID primitive.ObjectID, jwt string) (TokenPair, error) {
+	useridJwt, roles, err := s.tokenManager.Parse(jwt)
+	if err != nil {
+		return TokenPair{}, err
+	}
+	if useridJwt != userID.Hex() {
+		return TokenPair{}, domain.ErrUnathorized
+	}
+
+	return s.CreateSession(ctx, userID, roles)
 }
 
-func (s *SessionService) CreateSession(ctx context.Context, userId primitive.ObjectID) (res TokenPair, err error) {
-	res.AccessToken, err = s.tokenManager.NewAccessToken(userId.Hex(), s.accessTokenTTL)
+func (s *SessionService) CreateSession(ctx context.Context, userID primitive.ObjectID, roles []string) (res TokenPair, err error) {
+	res.AccessToken, err = s.tokenManager.NewAccessToken(userID.Hex(), s.accessTokenTTL, roles, s.application)
 	if err != nil {
 		return TokenPair{}, err
 	}
@@ -47,7 +57,7 @@ func (s *SessionService) CreateSession(ctx context.Context, userId primitive.Obj
 	}
 
 	session := domain.Session{
-		UserID:       userId,
+		UserID:       userID,
 		RefreshToken: res.RefreshToken,
 		ExpiredAt:    time.Now().Add(s.refreshTokenTTL),
 	}

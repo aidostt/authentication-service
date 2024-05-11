@@ -29,18 +29,18 @@ type UserSignInInput struct {
 }
 
 type Users interface {
-	GetByID(context.Context, string) (domain.User, error)
-	GetByEmail(context.Context, string) (domain.User, error)
-	Update(context.Context, string, string, string, string, string, string) error
+	GetByID(context.Context, string) (*domain.User, error)
+	GetByEmail(context.Context, string) (*domain.User, error)
+	Update(context.Context, string, string, string, string, string, string, []string) error
 	Delete(context.Context, string, string) error
-	SignUp(context.Context, string, string, string, string, string) (primitive.ObjectID, error)
-	SignIn(context.Context, string, string) (primitive.ObjectID, error)
+	SignUp(context.Context, string, string, string, string, string, []string) (primitive.ObjectID, error)
+	SignIn(context.Context, string, string) (primitive.ObjectID, []string, error)
 	IsAdmin(context.Context, string) (bool, error)
 }
 
 type Sessions interface {
-	Refresh(context.Context, primitive.ObjectID) (TokenPair, error)
-	CreateSession(context.Context, primitive.ObjectID) (TokenPair, error)
+	Refresh(context.Context, primitive.ObjectID, string) (TokenPair, error)
+	CreateSession(context.Context, primitive.ObjectID, []string) (TokenPair, error)
 	GetSession(context.Context, string) (*domain.Session, error)
 }
 
@@ -57,11 +57,12 @@ type Dependencies struct {
 	RefreshTokenTTL time.Duration
 	Environment     string
 	Domain          string
+	Application     string
 }
 
 func NewServices(deps Dependencies) *Services {
-	userService := NewUserService(deps.Repos.Users, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain)
-	sessionService := NewSessionService(deps.Repos.Sessions, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain)
+	userService := NewUserService(deps.Repos.Users, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain, deps.Application)
+	sessionService := NewSessionService(deps.Repos.Sessions, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain, deps.Application)
 	return &Services{
 		Users:    userService,
 		Sessions: sessionService,

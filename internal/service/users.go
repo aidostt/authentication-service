@@ -18,9 +18,10 @@ type UserService struct {
 	accessTokenTTL  time.Duration
 	refreshTokenTTL time.Duration
 	domain          string
+	application     string
 }
 
-func NewUserService(repo repository.Users, hasher hash.PasswordHasher, tokenManager authManager.TokenManager, accessTTL, refreshTTL time.Duration, domain string) *UserService {
+func NewUserService(repo repository.Users, hasher hash.PasswordHasher, tokenManager authManager.TokenManager, accessTTL, refreshTTL time.Duration, domain string, application string) *UserService {
 	return &UserService{
 		repo:            repo,
 		hasher:          hasher,
@@ -28,10 +29,11 @@ func NewUserService(repo repository.Users, hasher hash.PasswordHasher, tokenMana
 		accessTokenTTL:  accessTTL,
 		refreshTokenTTL: refreshTTL,
 		domain:          domain,
+		application:     application,
 	}
 }
 
-func (s *UserService) SignUp(ctx context.Context, name string, surname string, phone string, email string, password string) (primitive.ObjectID, error) {
+func (s *UserService) SignUp(ctx context.Context, name, surname, phone, email, password string, roles []string) (primitive.ObjectID, error) {
 	passwordHash, err := s.hasher.Hash(password)
 	if err != nil {
 		return primitive.ObjectID{}, err
@@ -41,6 +43,7 @@ func (s *UserService) SignUp(ctx context.Context, name string, surname string, p
 		Surname:  surname,
 		Phone:    phone,
 		Email:    email,
+		Roles:    roles,
 		Password: string(passwordHash),
 	}
 	if err = s.repo.Create(ctx, user); err != nil {
@@ -48,41 +51,54 @@ func (s *UserService) SignUp(ctx context.Context, name string, surname string, p
 	}
 	return user.ID, nil
 }
-func (s *UserService) SignIn(ctx context.Context, email string, password string) (primitive.ObjectID, error) {
+func (s *UserService) SignIn(ctx context.Context, email string, password string) (primitive.ObjectID, []string, error) {
 	user, err := s.repo.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			return primitive.ObjectID{}, err
+			return primitive.ObjectID{}, nil, err
 		}
-		return primitive.ObjectID{}, err
+		return primitive.ObjectID{}, nil, err
 	}
 	ok, err := s.hasher.Matches(password, []byte(user.Password))
 	if err != nil {
-		return primitive.ObjectID{}, err
+		return primitive.ObjectID{}, nil, err
 	}
 	if !ok {
-		return primitive.ObjectID{}, domain.ErrWrongPassword
+		return primitive.ObjectID{}, nil, domain.ErrWrongPassword
 	}
-	return user.ID, err
+	return user.ID, user.Roles, err
 }
 
 func (s *UserService) IsAdmin(ctx context.Context, userID string) (bool, error) {
+	id, err := s.tokenManager.HexToObjectID(userID)
+	if err != nil {
+		return false, err
+	}
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	for _, role := range user.Roles {
+		if role == domain.AdminRole {
+			return true, nil
+		}
+	}
 	return false, nil
 }
 
-func (s *UserService) GetByID(ctx context.Context, userID string) (domain.User, error) {
+func (s *UserService) GetByID(ctx context.Context, userID string) (*domain.User, error) {
 	id, err := s.tokenManager.HexToObjectID(userID)
 	if err != nil {
-		return domain.User{}, err
+		return nil, err
 	}
 	return s.repo.GetByID(ctx, id)
 }
 
-func (s *UserService) GetByEmail(ctx context.Context, email string) (domain.User, error) {
+func (s *UserService) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	return s.repo.GetByEmail(ctx, email)
 }
 
-func (s *UserService) Update(ctx context.Context, userID, name, surname, phone, email, password string) error {
+func (s *UserService) Update(ctx context.Context, userID, name, surname, phone, email, password string, roles []string) error {
 	id, err := s.tokenManager.HexToObjectID(userID)
 	if err != nil {
 		return err
@@ -97,6 +113,7 @@ func (s *UserService) Update(ctx context.Context, userID, name, surname, phone, 
 		Surname:  surname,
 		Phone:    phone,
 		Email:    email,
+		Roles:    roles,
 		Password: string(passwordHash)}
 
 	return s.repo.Update(ctx, usr)

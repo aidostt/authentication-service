@@ -37,15 +37,14 @@ func (r *UsersRepo) Create(ctx context.Context, user *domain.User) error {
 	return nil
 }
 
-func (r *UsersRepo) GetByEmail(ctx context.Context, email string) (domain.User, error) {
-
-	var user domain.User
+func (r *UsersRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
+	var user *domain.User
 	if err := r.db.FindOne(ctx, bson.M{"email": email}).Decode(&user); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return domain.User{}, domain.ErrUserNotFound
+			return nil, domain.ErrUserNotFound
 		}
 
-		return domain.User{}, err
+		return nil, err
 	}
 
 	return user, nil
@@ -69,16 +68,16 @@ func (r *UsersRepo) Delete(ctx context.Context, id primitive.ObjectID, email str
 	return nil // Return nil if deletion was successful
 }
 
-func (r *UsersRepo) GetByID(ctx context.Context, userID primitive.ObjectID) (domain.User, error) {
-	var user domain.User
+func (r *UsersRepo) GetByID(ctx context.Context, userID primitive.ObjectID) (*domain.User, error) {
+	var user *domain.User
 	if err := r.db.FindOne(ctx, bson.M{
 		"_id": userID,
 	}).Decode(&user); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return domain.User{}, domain.ErrUserNotFound
+			return nil, domain.ErrUserNotFound
 		}
 
-		return domain.User{}, err
+		return nil, err
 	}
 
 	return user, nil
@@ -91,6 +90,7 @@ func (r *UsersRepo) Update(ctx context.Context, user domain.User) error {
 		"surname":  user.Surname,
 		"phone":    user.Phone,
 		"email":    user.Email,
+		"roles":    user.Roles,
 		"password": user.Password,
 	}}
 
