@@ -31,12 +31,12 @@ func (h *Handler) Refresh(ctx context.Context, tokens *proto_auth.TokenRequest) 
 	if session.RefreshToken != tokens.GetRt() {
 		return nil, status.Error(codes.Unauthenticated, "unauthorized access")
 	}
-
-	newTokens, err := h.services.Sessions.Refresh(ctx, session.UserID, tokens.GetJwt())
+	user, err := h.services.Users.GetByID(ctx, session.UserID.Hex())
+	newTokens, err := h.services.Sessions.Refresh(ctx, user, tokens.GetJwt())
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUnathorized), errors.Is(err, domain.ErrUserNotFound):
-			return nil, status.Error(codes.Unauthenticated, "unauthorized access")
+			return nil, status.Error(codes.Unauthenticated, "unauthorized access: "+err.Error())
 		default:
 			return nil, status.Error(codes.Unauthenticated, err.Error())
 		}

@@ -63,9 +63,10 @@ func (m *Manager) Parse(accessToken string) (string, []string, error) {
 	if err != nil {
 		var validationError *jwt.ValidationError
 		if errors.As(err, &validationError) && validationError.Errors&jwt.ValidationErrorExpired != 0 {
-			return "", nil, errors.New("token is expired")
+			err = errors.New("token is expired")
+		} else {
+			return "", nil, err
 		}
-		return "", nil, err
 	}
 
 	claims, ok := token.Claims.(*CustomClaims)
@@ -73,7 +74,7 @@ func (m *Manager) Parse(accessToken string) (string, []string, error) {
 		return "", nil, fmt.Errorf("error getting user claims from token")
 	}
 
-	return claims.UserID, claims.Roles, nil
+	return claims.UserID, claims.Roles, err
 }
 
 func (m *Manager) NewRefreshToken() (string, error) {

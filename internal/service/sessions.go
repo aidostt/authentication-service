@@ -7,6 +7,7 @@ import (
 	auth "authentication-service/pkg/manager"
 	"context"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"reflect"
 	"time"
 )
 
@@ -33,16 +34,21 @@ func NewSessionService(repo repository.Sessions, hasher hash.PasswordHasher, tok
 	}
 }
 
-func (s *SessionService) Refresh(ctx context.Context, userID primitive.ObjectID, jwt string) (TokenPair, error) {
-	useridJwt, roles, err := s.tokenManager.Parse(jwt)
+func (s *SessionService) Refresh(ctx context.Context, user *domain.User, jwt string) (TokenPair, error) {
+	useridJwt, rolesJwt, err := s.tokenManager.Parse(jwt)
 	if err != nil {
-		return TokenPair{}, err
+		if err.Error() == "token is expired" {
+		} else {
+			return TokenPair{}, err
+		}
 	}
-	if useridJwt != userID.Hex() {
+	if useridJwt != user.ID.Hex() {
 		return TokenPair{}, domain.ErrUnathorized
 	}
-
-	return s.CreateSession(ctx, userID, roles)
+	if !reflect.DeepEqual(user.Roles, rolesJwt) {
+		return TokenPair{}, domain.ErrUnathorized
+	}
+	return s.CreateSession(ctx, user.ID, rolesJwt)
 }
 
 func (s *SessionService) CreateSession(ctx context.Context, userID primitive.ObjectID, roles []string) (res TokenPair, err error) {

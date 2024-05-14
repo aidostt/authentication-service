@@ -39,7 +39,7 @@ type Users interface {
 }
 
 type Sessions interface {
-	Refresh(context.Context, primitive.ObjectID, string) (TokenPair, error)
+	Refresh(context.Context, *domain.User, string) (TokenPair, error)
 	CreateSession(context.Context, primitive.ObjectID, []string) (TokenPair, error)
 	GetSession(context.Context, string) (*domain.Session, error)
 }
