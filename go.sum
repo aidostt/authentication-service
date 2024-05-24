@@ -1,11 +1,5 @@
-github.com/aidostt/protos v0.1.1 h1:ut3c2w0N+sk4ok+MU0jhWtOsK7WpVbe/+pa/pFBz3TU=
-github.com/aidostt/protos v0.1.1/go.mod h1:39rkoQJYNfKI1uAsrDfXJmxD/UIIabS3FN4FHIjb/xc=
-github.com/aidostt/protos v0.2.3 h1:drVfSzHz9+LJcr2A5HGSk1oONeBvKhHYW0vqn4BkO8A=
-github.com/aidostt/protos v0.2.3/go.mod h1:39rkoQJYNfKI1uAsrDfXJmxD/UIIabS3FN4FHIjb/xc=
-github.com/aidostt/protos v0.2.4 h1:515tBgJtACk6GMtb7dwObxKn88vjT2VAB5dHdycM53Q=
-github.com/aidostt/protos v0.2.4/go.mod h1:39rkoQJYNfKI1uAsrDfXJmxD/UIIabS3FN4FHIjb/xc=
-github.com/aidostt/protos v0.2.5 h1:yriDGcA1uqsBsXa7oO8+DGa/FyGFWlMlV5Tif6aTt+0=
-github.com/aidostt/protos v0.2.5/go.mod h1:39rkoQJYNfKI1uAsrDfXJmxD/UIIabS3FN4FHIjb/xc=
+github.com/aidostt/protos v0.5.4 h1:SqwcWrILq/aDRcEV34ty4iVCLDspwrEl2nExu4ajUwE=
+github.com/aidostt/protos v0.5.4/go.mod h1:39rkoQJYNfKI1uAsrDfXJmxD/UIIabS3FN4FHIjb/xc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=

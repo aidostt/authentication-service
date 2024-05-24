@@ -48,13 +48,14 @@ func Run(configPath, envPath string) {
 
 	repos := repository.NewModels(db)
 	services := service.NewServices(service.Dependencies{
-		Repos:           repos,
-		Hasher:          hasher,
-		TokenManager:    tokenManager,
-		AccessTokenTTL:  cfg.Auth.JWT.AccessTokenTTL,
-		RefreshTokenTTL: cfg.Auth.JWT.RefreshTokenTTL,
-		Environment:     cfg.Environment,
-		Domain:          cfg.GRPC.Host,
+		Repos:              repos,
+		Hasher:             hasher,
+		TokenManager:       tokenManager,
+		AccessTokenTTL:     cfg.Auth.JWT.AccessTokenTTL,
+		RefreshTokenTTL:    cfg.Auth.RefreshTokenTTL,
+		ActivationTokenTTL: cfg.Auth.ActivationTokenTTL,
+		Environment:        cfg.Environment,
+		Domain:             cfg.GRPC.Host,
 	})
 	handlers := delivery.NewHandler(services)
 

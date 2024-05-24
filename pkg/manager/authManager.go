@@ -1,6 +1,9 @@
 package authManager
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
@@ -14,6 +17,7 @@ type TokenManager interface {
 	NewAccessToken(string, time.Duration, []string, string) (string, error)
 	Parse(accessToken string) (string, []string, error)
 	NewRefreshToken() (string, error)
+	NewActivationToken(string) string
 	HexToObjectID(string) (primitive.ObjectID, error)
 }
 
@@ -96,4 +100,12 @@ func (m *Manager) HexToObjectID(hex string) (primitive.ObjectID, error) {
 		return primitive.NilObjectID, err
 	}
 	return objectId, nil
+}
+
+func (m *Manager) NewActivationToken(data string) string {
+	mac := hmac.New(sha256.New, []byte(m.signingKey))
+	mac.Write([]byte(data))
+	signature := mac.Sum(nil)
+	token := fmt.Sprintf("%s.%s", data, base64.URLEncoding.EncodeToString(signature))
+	return base64.URLEncoding.EncodeToString([]byte(token))
 }

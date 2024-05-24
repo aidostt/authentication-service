@@ -13,6 +13,7 @@ type Users interface {
 	Delete(context.Context, primitive.ObjectID, string) error
 	GetByID(context.Context, primitive.ObjectID) (*domain.User, error)
 	Update(context.Context, domain.User) error
+	Activate(context.Context, primitive.ObjectID, bool) error
 }
 type Sessions interface {
 	SetSession(ctx context.Context, session domain.Session) error

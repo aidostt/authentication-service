@@ -36,11 +36,13 @@ type Users interface {
 	SignUp(context.Context, string, string, string, string, string, []string) (primitive.ObjectID, error)
 	SignIn(context.Context, string, string) (primitive.ObjectID, []string, error)
 	IsAdmin(context.Context, string) (bool, error)
+	Activate(context.Context, string, bool) error
 }
 
 type Sessions interface {
+	CreateActivationToken(context.Context, string) string
 	Refresh(context.Context, *domain.User, string) (TokenPair, error)
-	CreateSession(context.Context, primitive.ObjectID, []string) (TokenPair, error)
+	CreateSession(context.Context, string, []string) (TokenPair, error)
 	GetSession(context.Context, string) (*domain.Session, error)
 }
 
@@ -50,19 +52,20 @@ type Services struct {
 }
 
 type Dependencies struct {
-	Repos           *repository.Models
-	Hasher          hash.PasswordHasher
-	TokenManager    auth.TokenManager
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
-	Environment     string
-	Domain          string
-	Application     string
+	Repos              *repository.Models
+	Hasher             hash.PasswordHasher
+	TokenManager       auth.TokenManager
+	AccessTokenTTL     time.Duration
+	RefreshTokenTTL    time.Duration
+	ActivationTokenTTL time.Duration
+	Environment        string
+	Domain             string
+	Application        string
 }
 
 func NewServices(deps Dependencies) *Services {
 	userService := NewUserService(deps.Repos.Users, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain, deps.Application)
-	sessionService := NewSessionService(deps.Repos.Sessions, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.Domain, deps.Application)
+	sessionService := NewSessionService(deps.Repos.Sessions, deps.Hasher, deps.TokenManager, deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.ActivationTokenTTL, deps.Domain, deps.Application)
 	return &Services{
 		Users:    userService,
 		Sessions: sessionService,

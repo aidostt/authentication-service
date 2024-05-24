@@ -103,3 +103,19 @@ func (r *UsersRepo) Update(ctx context.Context, user domain.User) error {
 	}
 	return nil
 }
+
+func (r *UsersRepo) Activate(ctx context.Context, id primitive.ObjectID, activate bool) error {
+	filter := bson.M{"_id": id}
+	update := bson.M{"$set": bson.M{
+		"activated": activate,
+	}}
+
+	result, err := r.db.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.ModifiedCount == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
+}

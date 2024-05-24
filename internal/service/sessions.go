@@ -6,31 +6,33 @@ import (
 	"authentication-service/pkg/hash"
 	auth "authentication-service/pkg/manager"
 	"context"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"fmt"
 	"reflect"
 	"time"
 )
 
 type SessionService struct {
-	repo            repository.Sessions
-	hasher          hash.PasswordHasher
-	tokenManager    auth.TokenManager
-	accessTokenTTL  time.Duration
-	refreshTokenTTL time.Duration
+	repo               repository.Sessions
+	hasher             hash.PasswordHasher
+	tokenManager       auth.TokenManager
+	activationTokenTTL time.Duration
+	accessTokenTTL     time.Duration
+	refreshTokenTTL    time.Duration
 
 	domain      string
 	application string
 }
 
-func NewSessionService(repo repository.Sessions, hasher hash.PasswordHasher, tokenManager auth.TokenManager, accessTTL, refreshTTL time.Duration, domain string, application string) *SessionService {
+func NewSessionService(repo repository.Sessions, hasher hash.PasswordHasher, tokenManager auth.TokenManager, accessTTL, refreshTTL, activationTTL time.Duration, domain string, application string) *SessionService {
 	return &SessionService{
-		repo:            repo,
-		hasher:          hasher,
-		tokenManager:    tokenManager,
-		accessTokenTTL:  accessTTL,
-		refreshTokenTTL: refreshTTL,
-		domain:          domain,
-		application:     application,
+		repo:               repo,
+		hasher:             hasher,
+		tokenManager:       tokenManager,
+		accessTokenTTL:     accessTTL,
+		refreshTokenTTL:    refreshTTL,
+		activationTokenTTL: activationTTL,
+		domain:             domain,
+		application:        application,
 	}
 }
 
@@ -43,16 +45,17 @@ func (s *SessionService) Refresh(ctx context.Context, user *domain.User, jwt str
 		}
 	}
 	if useridJwt != user.ID.Hex() {
-		return TokenPair{}, domain.ErrUnathorized
+		return TokenPair{}, domain.ErrUnauthorized
 	}
+	//TODO:check deep equal
 	if !reflect.DeepEqual(user.Roles, rolesJwt) {
-		return TokenPair{}, domain.ErrUnathorized
+		return TokenPair{}, domain.ErrUnauthorized
 	}
-	return s.CreateSession(ctx, user.ID, rolesJwt)
+	return s.CreateSession(ctx, user.ID.Hex(), rolesJwt)
 }
 
-func (s *SessionService) CreateSession(ctx context.Context, userID primitive.ObjectID, roles []string) (res TokenPair, err error) {
-	res.AccessToken, err = s.tokenManager.NewAccessToken(userID.Hex(), s.accessTokenTTL, roles, s.application)
+func (s *SessionService) CreateSession(ctx context.Context, userID string, roles []string) (res TokenPair, err error) {
+	res.AccessToken, err = s.tokenManager.NewAccessToken(userID, s.accessTokenTTL, roles, s.application)
 	if err != nil {
 		return TokenPair{}, err
 	}
@@ -61,9 +64,13 @@ func (s *SessionService) CreateSession(ctx context.Context, userID primitive.Obj
 	if err != nil {
 		return TokenPair{}, err
 	}
+	id, err := s.tokenManager.HexToObjectID(userID)
+	if err != nil {
+		return TokenPair{}, err
+	}
 
 	session := domain.Session{
-		UserID:       userID,
+		UserID:       id,
 		RefreshToken: res.RefreshToken,
 		ExpiredAt:    time.Now().Add(s.refreshTokenTTL),
 	}
@@ -86,4 +93,8 @@ func (s *SessionService) GetSession(ctx context.Context, RT string) (*domain.Ses
 		return nil, domain.ErrSessionExpired
 	}
 	return session, nil
+}
+
+func (s *SessionService) CreateActivationToken(ctx context.Context, id string) string {
+	return s.tokenManager.NewActivationToken(fmt.Sprintf("%v:%v", id, time.Now().Add(s.activationTokenTTL).Unix()))
 }

@@ -16,6 +16,7 @@ const (
 	defaultHTTPRWTimeout          = 10 * time.Second
 	defaultHTTPMaxHeaderMegabytes = 1
 	defaultAccessTokenTTL         = 15 * time.Minute
+	defaultActivationTokenTTL     = 4 * time.Hour
 	defaultRefreshTokenTTL        = 12 * time.Hour
 
 	envLocal = "local"
@@ -40,14 +41,15 @@ type (
 	}
 
 	AuthConfig struct {
-		JWT          JWTConfig
-		PasswordCost int
+		JWT                JWTConfig
+		RefreshTokenTTL    time.Duration `mapstructure:"refreshTokenTTL"`
+		ActivationTokenTTL time.Duration `mapstructure:"activationTokenTTL"`
+		PasswordCost       int
 	}
 
 	JWTConfig struct {
-		AccessTokenTTL  time.Duration `mapstructure:"accessTokenTTL"`
-		RefreshTokenTTL time.Duration `mapstructure:"refreshTokenTTL"`
-		SigningKey      string
+		AccessTokenTTL time.Duration `mapstructure:"accessTokenTTL"`
+		SigningKey     string
 	}
 
 	GRPCConfig struct {
@@ -58,13 +60,13 @@ type (
 )
 
 func Init(configsDir, envDir string) (*Config, error) {
+	var cfg Config
 	populateDefaults()
 	loadEnvVariables(envDir)
 	if err := parseConfigFile(configsDir); err != nil {
 		return nil, err
 	}
 
-	var cfg Config
 	if err := unmarshal(&cfg); err != nil {
 		return nil, err
 	}
@@ -82,7 +84,9 @@ func unmarshal(cfg *Config) error {
 	if err := viper.UnmarshalKey("grpc", &cfg.GRPC); err != nil {
 		return err
 	}
-
+	if err := viper.UnmarshalKey("auth", &cfg.Auth); err != nil {
+		return err
+	}
 	return viper.UnmarshalKey("auth", &cfg.Auth.JWT)
 }
 
@@ -128,4 +132,5 @@ func populateDefaults() {
 	viper.SetDefault("http.timeouts.write", defaultHTTPRWTimeout)
 	viper.SetDefault("auth.accessTokenTTL", defaultAccessTokenTTL)
 	viper.SetDefault("auth.refreshTokenTTL", defaultRefreshTokenTTL)
+	viper.SetDefault("auth.activationTokenTTL", defaultActivationTokenTTL)
 }

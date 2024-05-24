@@ -4,6 +4,10 @@ mongo:
 auth:
   accessTokenTTL: 15m
   refreshTokenTTL: 12h
+  activationTokenTTL: 4h
+
+jwt:
+  accessTokenTTL: 15m
 
 grpc:
   port: 5050

@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (h *Handler) SignUp(ctx context.Context, input *proto_auth.RegisterRequest) (*proto_auth.TokenResponse, error) {
+func (h *Handler) SignUp(ctx context.Context, input *proto_auth.SignUpRequest) (*proto_auth.ActivationToken, error) {
 	if input.Name == "" {
 		return nil, status.Error(codes.InvalidArgument, "name is required")
 	}
@@ -38,14 +38,11 @@ func (h *Handler) SignUp(ctx context.Context, input *proto_auth.RegisterRequest)
 			return nil, status.Error(codes.AlreadyExists, domain.ErrUserAlreadyExists.Error())
 		}
 		logger.Error(err)
-		return nil, status.Error(codes.Internal, "failed to sign up")
+		return nil, status.Error(codes.Internal, "failed to sign up: "+err.Error())
 	}
-	tokens, err := h.services.Sessions.CreateSession(ctx, id, roles)
-	if err != nil {
-		logger.Error(err)
-		return nil, status.Error(codes.Internal, "failed to create session")
-	}
-	return &proto_auth.TokenResponse{Jwt: tokens.AccessToken, Rt: tokens.RefreshToken}, nil
+	return &proto_auth.ActivationToken{
+		Token: h.services.Sessions.CreateActivationToken(ctx, id.Hex()),
+	}, nil
 }
 func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (*proto_auth.TokenResponse, error) {
 	if input.Email == "" {
@@ -58,6 +55,8 @@ func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (
 	if err != nil {
 		logger.Error(err)
 		switch {
+		case errors.Is(err, domain.ErrUserNotActivated):
+			return nil, status.Error(codes.Unauthenticated, domain.ErrUserNotActivated.Error())
 		case errors.Is(err, domain.ErrWrongPassword):
 			return nil, status.Error(codes.InvalidArgument, domain.ErrWrongPassword.Error())
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -67,9 +66,7 @@ func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (
 		}
 
 	}
-	//TODO: retrieve roles from db
-	//TODO: put it into jwt token
-	tokens, err := h.services.Sessions.CreateSession(ctx, id, roles)
+	tokens, err := h.services.Sessions.CreateSession(ctx, id.String(), roles)
 	if err != nil {
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to create session")
@@ -103,10 +100,12 @@ func (h *Handler) GetByID(ctx context.Context, input *proto_user.GetRequest) (*p
 		}
 	}
 	return &proto_user.UserResponse{
-		Name:    user.Name,
-		Surname: user.Surname,
-		Phone:   user.Phone,
-		Email:   user.Email,
+		Name:      user.Name,
+		Surname:   user.Surname,
+		Phone:     user.Phone,
+		Email:     user.Email,
+		Activated: user.Activated,
+		Roles:     user.Roles,
 	}, nil
 }
 
@@ -120,14 +119,16 @@ func (h *Handler) GetByEmail(ctx context.Context, input *proto_user.GetRequest) 
 		case errors.Is(err, domain.ErrUserNotFound):
 			return nil, status.Error(codes.InvalidArgument, "wrong email")
 		default:
-			return nil, status.Error(codes.Internal, "failed to get by email")
+			return nil, status.Error(codes.Internal, "failed to get by email: "+err.Error())
 		}
 	}
 	return &proto_user.UserResponse{
-		Name:    user.Name,
-		Surname: user.Surname,
-		Phone:   user.Phone,
-		Email:   user.Email,
+		Name:      user.Name,
+		Surname:   user.Surname,
+		Phone:     user.Phone,
+		Email:     user.Email,
+		Activated: user.Activated,
+		Roles:     user.Roles,
 	}, nil
 }
 
@@ -160,7 +161,7 @@ func (h *Handler) Update(ctx context.Context, input *proto_user.UpdateRequest) (
 		case errors.Is(err, domain.ErrUserNotFound):
 			return &proto_user.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, domain.ErrUserNotFound.Error())
 		default:
-			return nil, status.Error(codes.Internal, "failed to update user")
+			return nil, status.Error(codes.Internal, "failed to update user: "+err.Error())
 		}
 	}
 	return &proto_user.StatusResponse{Status: true}, nil
@@ -179,7 +180,23 @@ func (h *Handler) Delete(ctx context.Context, input *proto_user.GetRequest) (*pr
 		case errors.Is(err, domain.ErrUserNotFound):
 			return &proto_user.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, domain.ErrUserNotFound.Error())
 		default:
-			return nil, status.Error(codes.Internal, "failed to delete user")
+			return nil, status.Error(codes.Internal, "failed to delete user: "+err.Error())
+		}
+	}
+	return &proto_user.StatusResponse{Status: true}, nil
+}
+
+func (h *Handler) Activate(ctx context.Context, input *proto_user.ActivateRequest) (*proto_user.StatusResponse, error) {
+	if input.GetUserID() == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+	err := h.services.Users.Activate(ctx, input.GetUserID(), input.GetActivate())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			return &proto_user.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, domain.ErrUserNotFound.Error())
+		default:
+			return &proto_user.StatusResponse{Status: false}, status.Error(codes.Internal, "failed to activate user: "+err.Error())
 		}
 	}
 	return &proto_user.StatusResponse{Status: true}, nil

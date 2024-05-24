@@ -39,12 +39,13 @@ func (s *UserService) SignUp(ctx context.Context, name, surname, phone, email, p
 		return primitive.ObjectID{}, err
 	}
 	user := &domain.User{
-		Name:     name,
-		Surname:  surname,
-		Phone:    phone,
-		Email:    email,
-		Roles:    roles,
-		Password: string(passwordHash),
+		Name:      name,
+		Surname:   surname,
+		Phone:     phone,
+		Email:     email,
+		Roles:     roles,
+		Password:  string(passwordHash),
+		Activated: false,
 	}
 	if err = s.repo.Create(ctx, user); err != nil {
 		return primitive.ObjectID{}, err
@@ -53,6 +54,9 @@ func (s *UserService) SignUp(ctx context.Context, name, surname, phone, email, p
 }
 func (s *UserService) SignIn(ctx context.Context, email string, password string) (primitive.ObjectID, []string, error) {
 	user, err := s.repo.GetByEmail(ctx, email)
+	if !user.Activated {
+		return primitive.ObjectID{}, nil, domain.ErrUserNotActivated
+	}
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
 			return primitive.ObjectID{}, nil, err
@@ -124,4 +128,12 @@ func (s *UserService) Delete(ctx context.Context, userID, email string) error {
 		return err
 	}
 	return s.repo.Delete(ctx, id, email)
+}
+
+func (s *UserService) Activate(ctx context.Context, userID string, activate bool) error {
+	id, err := s.tokenManager.HexToObjectID(userID)
+	if err != nil {
+		return err
+	}
+	return s.repo.Activate(ctx, id, activate)
 }

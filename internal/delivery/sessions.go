@@ -4,7 +4,7 @@ import (
 	"authentication-service/internal/domain"
 	"context"
 	"errors"
-	"github.com/aidostt/protos/gen/go/reservista/authentication"
+	proto_auth "github.com/aidostt/protos/gen/go/reservista/authentication"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -35,7 +35,27 @@ func (h *Handler) Refresh(ctx context.Context, tokens *proto_auth.TokenRequest) 
 	newTokens, err := h.services.Sessions.Refresh(ctx, user, tokens.GetJwt())
 	if err != nil {
 		switch {
-		case errors.Is(err, domain.ErrUnathorized), errors.Is(err, domain.ErrUserNotFound):
+		case errors.Is(err, domain.ErrUnauthorized), errors.Is(err, domain.ErrUserNotFound):
+			return nil, status.Error(codes.Unauthenticated, "unauthorized access: "+err.Error())
+		default:
+			return nil, status.Error(codes.Unauthenticated, err.Error())
+		}
+	}
+	return &proto_auth.TokenResponse{Jwt: newTokens.AccessToken, Rt: newTokens.RefreshToken}, nil
+}
+
+func (h *Handler) CreateSession(ctx context.Context, input *proto_auth.CreateRequest) (*proto_auth.TokenResponse, error) {
+	if input.GetId() == "" {
+		return nil, status.Error(codes.Unauthenticated, "id is required")
+	}
+	if input.GetRoles() == nil {
+		return nil, status.Error(codes.Unauthenticated, "roles are required")
+	}
+
+	newTokens, err := h.services.Sessions.CreateSession(ctx, input.GetId(), input.GetRoles())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrUnauthorized), errors.Is(err, domain.ErrUserNotFound):
 			return nil, status.Error(codes.Unauthenticated, "unauthorized access: "+err.Error())
 		default:
 			return nil, status.Error(codes.Unauthenticated, err.Error())
