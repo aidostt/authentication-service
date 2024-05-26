@@ -3,8 +3,9 @@ package domain
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 const (
-	UserRole  = "user"
-	AdminRole = "admin"
+	UserRole      = "user"
+	AdminRole     = "admin"
+	ActivatedRole = "activated"
 )
 
 type User struct {

@@ -40,10 +40,20 @@ func (h *Handler) SignUp(ctx context.Context, input *proto_auth.SignUpRequest) (
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to sign up: "+err.Error())
 	}
+	tokens, err := h.services.Sessions.CreateSession(ctx, id.String(), roles, false)
+	if err != nil {
+		logger.Error(err)
+		return nil, status.Error(codes.Internal, "failed to create session")
+	}
 	return &proto_auth.ActivationToken{
-		Token: h.services.Sessions.CreateActivationToken(ctx, id.Hex()),
+		ActivationToken: h.services.Sessions.CreateActivationToken(ctx, id.Hex()),
+		Tokens: &proto_auth.TokenResponse{
+			Jwt: tokens.AccessToken,
+			Rt:  tokens.RefreshToken,
+		},
 	}, nil
 }
+
 func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (*proto_auth.TokenResponse, error) {
 	if input.Email == "" {
 		return nil, status.Error(codes.InvalidArgument, "email is required")
@@ -51,12 +61,10 @@ func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (
 	if input.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "password is required")
 	}
-	id, roles, err := h.services.Users.SignIn(ctx, input.GetEmail(), input.GetPassword())
+	id, roles, activated, err := h.services.Users.SignIn(ctx, input.GetEmail(), input.GetPassword())
 	if err != nil {
 		logger.Error(err)
 		switch {
-		case errors.Is(err, domain.ErrUserNotActivated):
-			return nil, status.Error(codes.Unauthenticated, domain.ErrUserNotActivated.Error())
 		case errors.Is(err, domain.ErrWrongPassword):
 			return nil, status.Error(codes.InvalidArgument, domain.ErrWrongPassword.Error())
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -66,7 +74,7 @@ func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (
 		}
 
 	}
-	tokens, err := h.services.Sessions.CreateSession(ctx, id.String(), roles)
+	tokens, err := h.services.Sessions.CreateSession(ctx, id.Hex(), roles, activated)
 	if err != nil {
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to create session")

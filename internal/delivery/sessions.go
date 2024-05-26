@@ -52,7 +52,7 @@ func (h *Handler) CreateSession(ctx context.Context, input *proto_auth.CreateReq
 		return nil, status.Error(codes.Unauthenticated, "roles are required")
 	}
 
-	newTokens, err := h.services.Sessions.CreateSession(ctx, input.GetId(), input.GetRoles())
+	newTokens, err := h.services.Sessions.CreateSession(ctx, input.GetId(), input.GetRoles(), input.GetActivated())
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUnauthorized), errors.Is(err, domain.ErrUserNotFound):

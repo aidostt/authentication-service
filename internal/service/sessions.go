@@ -37,7 +37,7 @@ func NewSessionService(repo repository.Sessions, hasher hash.PasswordHasher, tok
 }
 
 func (s *SessionService) Refresh(ctx context.Context, user *domain.User, jwt string) (TokenPair, error) {
-	useridJwt, rolesJwt, err := s.tokenManager.Parse(jwt)
+	useridJwt, rolesJwt, activated, err := s.tokenManager.Parse(jwt)
 	if err != nil {
 		if err.Error() == "token is expired" {
 		} else {
@@ -51,11 +51,11 @@ func (s *SessionService) Refresh(ctx context.Context, user *domain.User, jwt str
 	if !reflect.DeepEqual(user.Roles, rolesJwt) {
 		return TokenPair{}, domain.ErrUnauthorized
 	}
-	return s.CreateSession(ctx, user.ID.Hex(), rolesJwt)
+	return s.CreateSession(ctx, user.ID.Hex(), rolesJwt, activated)
 }
 
-func (s *SessionService) CreateSession(ctx context.Context, userID string, roles []string) (res TokenPair, err error) {
-	res.AccessToken, err = s.tokenManager.NewAccessToken(userID, s.accessTokenTTL, roles, s.application)
+func (s *SessionService) CreateSession(ctx context.Context, userID string, roles []string, activated bool) (res TokenPair, err error) {
+	res.AccessToken, err = s.tokenManager.NewAccessToken(userID, s.accessTokenTTL, roles, s.application, activated)
 	if err != nil {
 		return TokenPair{}, err
 	}

@@ -52,25 +52,22 @@ func (s *UserService) SignUp(ctx context.Context, name, surname, phone, email, p
 	}
 	return user.ID, nil
 }
-func (s *UserService) SignIn(ctx context.Context, email string, password string) (primitive.ObjectID, []string, error) {
+func (s *UserService) SignIn(ctx context.Context, email string, password string) (primitive.ObjectID, []string, bool, error) {
 	user, err := s.repo.GetByEmail(ctx, email)
-	if !user.Activated {
-		return primitive.ObjectID{}, nil, domain.ErrUserNotActivated
-	}
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			return primitive.ObjectID{}, nil, err
+			return primitive.ObjectID{}, nil, false, err
 		}
-		return primitive.ObjectID{}, nil, err
+		return primitive.ObjectID{}, nil, false, err
 	}
 	ok, err := s.hasher.Matches(password, []byte(user.Password))
 	if err != nil {
-		return primitive.ObjectID{}, nil, err
+		return primitive.ObjectID{}, nil, false, err
 	}
 	if !ok {
-		return primitive.ObjectID{}, nil, domain.ErrWrongPassword
+		return primitive.ObjectID{}, nil, false, domain.ErrWrongPassword
 	}
-	return user.ID, user.Roles, err
+	return user.ID, user.Roles, user.Activated, err
 }
 
 func (s *UserService) IsAdmin(ctx context.Context, userID string) (bool, error) {
@@ -135,5 +132,20 @@ func (s *UserService) Activate(ctx context.Context, userID string, activate bool
 	if err != nil {
 		return err
 	}
-	return s.repo.Activate(ctx, id, activate)
+	err = s.repo.Activate(ctx, id, activate)
+	if err != nil {
+		return err
+	}
+	if activate {
+		err = s.repo.AddRole(ctx, id, domain.ActivatedRole)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = s.repo.RemoveRole(ctx, id, domain.ActivatedRole)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

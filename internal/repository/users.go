@@ -119,3 +119,31 @@ func (r *UsersRepo) Activate(ctx context.Context, id primitive.ObjectID, activat
 	}
 	return nil
 }
+
+func (r *UsersRepo) AddRole(ctx context.Context, id primitive.ObjectID, role string) error {
+	filter := bson.M{"_id": id}
+	update := bson.M{"$addToSet": bson.M{"roles": role}}
+
+	result, err := r.db.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.ModifiedCount == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
+}
+
+func (r *UsersRepo) RemoveRole(ctx context.Context, id primitive.ObjectID, role string) error {
+	filter := bson.M{"_id": id}
+	update := bson.M{"$pull": bson.M{"roles": role}}
+
+	result, err := r.db.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.ModifiedCount == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
+}
