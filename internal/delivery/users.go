@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/aidostt/protos/gen/go/reservista/authentication"
 	"github.com/aidostt/protos/gen/go/reservista/user"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,7 +33,8 @@ func (h *Handler) SignUp(ctx context.Context, input *proto_auth.SignUpRequest) (
 	roles := []string{
 		domain.UserRole,
 	}
-	id, err := h.services.Users.SignUp(ctx, input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword(), roles)
+	code := h.services.Sessions.GenerateVerificationCode()
+	id, err := h.services.Users.SignUp(ctx, input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword(), code, roles)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
 			return nil, status.Error(codes.AlreadyExists, domain.ErrUserAlreadyExists.Error())
@@ -45,8 +47,9 @@ func (h *Handler) SignUp(ctx context.Context, input *proto_auth.SignUpRequest) (
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to create session")
 	}
+
 	return &proto_auth.ActivationToken{
-		ActivationToken: h.services.Sessions.CreateActivationToken(ctx, id.Hex()),
+		ActivationToken: code,
 		Tokens: &proto_auth.TokenResponse{
 			Jwt: tokens.AccessToken,
 			Rt:  tokens.RefreshToken,
@@ -159,11 +162,11 @@ func (h *Handler) Update(ctx context.Context, input *proto_user.UpdateRequest) (
 	if input.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "password is required")
 	}
-	//TODO: refactor
-	roles := []string{
-		domain.UserRole,
+	newVerificationCode := domain.VerificationCode{
+		Code:      h.services.Sessions.GenerateVerificationCode(),
+		ExpiredAt: time.Now(),
 	}
-	err := h.services.Users.Update(ctx, input.GetId(), input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword(), roles)
+	err := h.services.Users.Update(ctx, input.GetId(), input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword(), input.GetRoles(), input.GetActivated(), newVerificationCode)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -208,4 +211,43 @@ func (h *Handler) Activate(ctx context.Context, input *proto_user.ActivateReques
 		}
 	}
 	return &proto_user.StatusResponse{Status: true}, nil
+}
+
+func (h *Handler) VerificationCode(ctx context.Context, input *proto_user.GetRequest) (*proto_user.VerificationCodeMessage, error) {
+	if input.UserId == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+	user, err := h.services.Users.GetByID(ctx, input.GetUserId())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			return nil, status.Error(codes.InvalidArgument, "wrong id")
+		default:
+			return nil, status.Error(codes.Internal, "failed to get by id")
+		}
+	}
+	newVerificationCode := domain.VerificationCode{}
+	if user.VerificationCode.ExpiredAt.Before(time.Now()) {
+		newVerificationCode = domain.VerificationCode{
+			Code:      h.services.Sessions.GenerateVerificationCode(),
+			ExpiredAt: time.Now(),
+		}
+		err = h.services.Users.Update(ctx, user.ID.Hex(), user.Name, user.Surname, user.Phone, user.Email, user.Password, user.Roles, user.Activated, newVerificationCode)
+		if err != nil {
+			switch {
+			case errors.Is(err, domain.ErrUserNotFound):
+				return nil, status.Error(codes.InvalidArgument, domain.ErrUserNotFound.Error())
+			default:
+				return nil, status.Error(codes.Internal, "failed to update user: "+err.Error())
+			}
+		}
+		return &proto_user.VerificationCodeMessage{
+			Email: user.Email,
+			Code:  newVerificationCode.Code,
+		}, nil
+	}
+	return &proto_user.VerificationCodeMessage{
+		Email: user.Email,
+		Code:  user.VerificationCode.Code,
+	}, nil
 }

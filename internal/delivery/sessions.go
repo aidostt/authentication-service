@@ -58,7 +58,7 @@ func (h *Handler) CreateSession(ctx context.Context, input *proto_auth.CreateReq
 		case errors.Is(err, domain.ErrUnauthorized), errors.Is(err, domain.ErrUserNotFound):
 			return nil, status.Error(codes.Unauthenticated, "unauthorized access: "+err.Error())
 		default:
-			return nil, status.Error(codes.Unauthenticated, err.Error())
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
 	return &proto_auth.TokenResponse{Jwt: newTokens.AccessToken, Rt: newTokens.RefreshToken}, nil

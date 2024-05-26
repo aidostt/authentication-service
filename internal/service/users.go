@@ -33,19 +33,24 @@ func NewUserService(repo repository.Users, hasher hash.PasswordHasher, tokenMana
 	}
 }
 
-func (s *UserService) SignUp(ctx context.Context, name, surname, phone, email, password string, roles []string) (primitive.ObjectID, error) {
+func (s *UserService) SignUp(ctx context.Context, name, surname, phone, email, password, code string, roles []string) (primitive.ObjectID, error) {
 	passwordHash, err := s.hasher.Hash(password)
 	if err != nil {
 		return primitive.ObjectID{}, err
 	}
+	newVerificationCode := domain.VerificationCode{
+		Code:      code,
+		ExpiredAt: time.Now(),
+	}
 	user := &domain.User{
-		Name:      name,
-		Surname:   surname,
-		Phone:     phone,
-		Email:     email,
-		Roles:     roles,
-		Password:  string(passwordHash),
-		Activated: false,
+		Name:             name,
+		Surname:          surname,
+		Phone:            phone,
+		Email:            email,
+		Roles:            roles,
+		Password:         string(passwordHash),
+		Activated:        false,
+		VerificationCode: newVerificationCode,
 	}
 	if err = s.repo.Create(ctx, user); err != nil {
 		return primitive.ObjectID{}, err
@@ -99,7 +104,7 @@ func (s *UserService) GetByEmail(ctx context.Context, email string) (*domain.Use
 	return s.repo.GetByEmail(ctx, email)
 }
 
-func (s *UserService) Update(ctx context.Context, userID, name, surname, phone, email, password string, roles []string) error {
+func (s *UserService) Update(ctx context.Context, userID, name, surname, phone, email, password string, roles []string, activated bool, verificationCode domain.VerificationCode) error {
 	id, err := s.tokenManager.HexToObjectID(userID)
 	if err != nil {
 		return err
@@ -109,13 +114,16 @@ func (s *UserService) Update(ctx context.Context, userID, name, surname, phone, 
 		return err
 	}
 	usr := domain.User{
-		ID:       id,
-		Name:     name,
-		Surname:  surname,
-		Phone:    phone,
-		Email:    email,
-		Roles:    roles,
-		Password: string(passwordHash)}
+		ID:               id,
+		Name:             name,
+		Surname:          surname,
+		Phone:            phone,
+		Email:            email,
+		Roles:            roles,
+		Password:         string(passwordHash),
+		Activated:        activated,
+		VerificationCode: verificationCode,
+	}
 
 	return s.repo.Update(ctx, usr)
 }

@@ -31,9 +31,9 @@ type UserSignInInput struct {
 type Users interface {
 	GetByID(context.Context, string) (*domain.User, error)
 	GetByEmail(context.Context, string) (*domain.User, error)
-	Update(context.Context, string, string, string, string, string, string, []string) error
+	Update(context.Context, string, string, string, string, string, string, []string, bool, domain.VerificationCode) error
 	Delete(context.Context, string, string) error
-	SignUp(context.Context, string, string, string, string, string, []string) (primitive.ObjectID, error)
+	SignUp(context.Context, string, string, string, string, string, string, []string) (primitive.ObjectID, error)
 	SignIn(context.Context, string, string) (primitive.ObjectID, []string, bool, error)
 	IsAdmin(context.Context, string) (bool, error)
 	Activate(context.Context, string, bool) error
@@ -44,6 +44,7 @@ type Sessions interface {
 	Refresh(context.Context, *domain.User, string) (TokenPair, error)
 	CreateSession(context.Context, string, []string, bool) (TokenPair, error)
 	GetSession(context.Context, string) (*domain.Session, error)
+	GenerateVerificationCode() string
 }
 
 type Services struct {

@@ -7,6 +7,7 @@ import (
 	auth "authentication-service/pkg/manager"
 	"context"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"time"
 )
@@ -97,4 +98,10 @@ func (s *SessionService) GetSession(ctx context.Context, RT string) (*domain.Ses
 
 func (s *SessionService) CreateActivationToken(ctx context.Context, id string) string {
 	return s.tokenManager.NewActivationToken(fmt.Sprintf("%v:%v", id, time.Now().Add(s.activationTokenTTL).Unix()))
+}
+
+func (s *SessionService) GenerateVerificationCode() string {
+	rand.NewSource(time.Now().UnixNano())
+	code := rand.Intn(1000000)
+	return fmt.Sprintf("%06d", code)
 }

@@ -10,3 +10,8 @@ type Session struct {
 	RefreshToken string             `json:"refreshToken" bson:"refreshToken"`
 	ExpiredAt    time.Time          `json:"expiresAt" bson:"expiresAt"`
 }
+
+type VerificationCode struct {
+	Code      string    `json:"code" bson:"code"`
+	ExpiredAt time.Time `json:"expiresAt" bson:"expiresAt"`
+}
