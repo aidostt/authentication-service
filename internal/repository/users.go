@@ -83,7 +83,7 @@ func (r *UsersRepo) GetByID(ctx context.Context, userID primitive.ObjectID) (*do
 	return user, nil
 }
 
-func (r *UsersRepo) Update(ctx context.Context, user domain.User) error {
+func (r *UsersRepo) Update(ctx context.Context, user *domain.User) error {
 	filter := bson.M{"_id": user.ID}
 	update := bson.M{"$set": bson.M{
 		"name":              user.Name,

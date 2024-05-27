@@ -7,8 +7,6 @@ import (
 	auth "authentication-service/pkg/manager"
 	"context"
 	"fmt"
-	"math/rand"
-	"reflect"
 	"time"
 )
 
@@ -38,7 +36,7 @@ func NewSessionService(repo repository.Sessions, hasher hash.PasswordHasher, tok
 }
 
 func (s *SessionService) Refresh(ctx context.Context, user *domain.User, jwt string) (TokenPair, error) {
-	useridJwt, rolesJwt, activated, err := s.tokenManager.Parse(jwt)
+	useridJwt, _, _, err := s.tokenManager.Parse(jwt)
 	if err != nil {
 		if err.Error() == "token is expired" {
 		} else {
@@ -48,11 +46,7 @@ func (s *SessionService) Refresh(ctx context.Context, user *domain.User, jwt str
 	if useridJwt != user.ID.Hex() {
 		return TokenPair{}, domain.ErrUnauthorized
 	}
-	//TODO:check deep equal
-	if !reflect.DeepEqual(user.Roles, rolesJwt) {
-		return TokenPair{}, domain.ErrUnauthorized
-	}
-	return s.CreateSession(ctx, user.ID.Hex(), rolesJwt, activated)
+	return s.CreateSession(ctx, user.ID.Hex(), user.Roles, user.Activated)
 }
 
 func (s *SessionService) CreateSession(ctx context.Context, userID string, roles []string, activated bool) (res TokenPair, err error) {
@@ -83,11 +77,11 @@ func (s *SessionService) CreateSession(ctx context.Context, userID string, roles
 
 func (s *SessionService) GetSession(ctx context.Context, RT string) (*domain.Session, error) {
 	session, err := s.repo.GetByRefreshToken(ctx, RT)
-
 	if err != nil {
 		return nil, err
 
 	}
+
 	// Check if the session has been retrieved and if it is expired
 	if session != nil && session.ExpiredAt.Before(time.Now()) {
 		// Session is expired, handle accordingly
@@ -98,10 +92,4 @@ func (s *SessionService) GetSession(ctx context.Context, RT string) (*domain.Ses
 
 func (s *SessionService) CreateActivationToken(ctx context.Context, id string) string {
 	return s.tokenManager.NewActivationToken(fmt.Sprintf("%v:%v", id, time.Now().Add(s.activationTokenTTL).Unix()))
-}
-
-func (s *SessionService) GenerateVerificationCode() string {
-	rand.NewSource(time.Now().UnixNano())
-	code := rand.Intn(1000000)
-	return fmt.Sprintf("%06d", code)
 }

@@ -44,6 +44,7 @@ type (
 		JWT                JWTConfig
 		RefreshTokenTTL    time.Duration `mapstructure:"refreshTokenTTL"`
 		ActivationTokenTTL time.Duration `mapstructure:"activationTokenTTL"`
+		ActivationCodeTTL  time.Duration `mapstructure:"activationCodeTTL"`
 		PasswordCost       int
 	}
 

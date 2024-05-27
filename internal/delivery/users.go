@@ -33,8 +33,7 @@ func (h *Handler) SignUp(ctx context.Context, input *proto_auth.SignUpRequest) (
 	roles := []string{
 		domain.UserRole,
 	}
-	code := h.services.Sessions.GenerateVerificationCode()
-	id, err := h.services.Users.SignUp(ctx, input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword(), code, roles)
+	id, code, err := h.services.Users.SignUp(ctx, input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword(), roles)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
 			return nil, status.Error(codes.AlreadyExists, domain.ErrUserAlreadyExists.Error())
@@ -42,7 +41,7 @@ func (h *Handler) SignUp(ctx context.Context, input *proto_auth.SignUpRequest) (
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to sign up: "+err.Error())
 	}
-	tokens, err := h.services.Sessions.CreateSession(ctx, id.String(), roles, false)
+	tokens, err := h.services.Sessions.CreateSession(ctx, id.Hex(), roles, false)
 	if err != nil {
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to create session")
@@ -103,6 +102,7 @@ func (h *Handler) GetByID(ctx context.Context, input *proto_user.GetRequest) (*p
 	}
 	user, err := h.services.Users.GetByID(ctx, input.GetUserId())
 	if err != nil {
+		logger.Error(err)
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
 			return nil, status.Error(codes.InvalidArgument, "wrong id")
@@ -126,6 +126,7 @@ func (h *Handler) GetByEmail(ctx context.Context, input *proto_user.GetRequest) 
 	}
 	user, err := h.services.Users.GetByEmail(ctx, input.GetEmail())
 	if err != nil {
+		logger.Error(err)
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
 			return nil, status.Error(codes.InvalidArgument, "wrong email")
@@ -162,12 +163,9 @@ func (h *Handler) Update(ctx context.Context, input *proto_user.UpdateRequest) (
 	if input.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "password is required")
 	}
-	newVerificationCode := domain.VerificationCode{
-		Code:      h.services.Sessions.GenerateVerificationCode(),
-		ExpiredAt: time.Now(),
-	}
-	err := h.services.Users.Update(ctx, input.GetId(), input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword(), input.GetRoles(), input.GetActivated(), newVerificationCode)
+	_, err := h.services.Users.Update(ctx, input.GetId(), input.GetName(), input.GetSurname(), input.GetPhone(), input.GetEmail(), input.GetPassword(), input.GetRoles(), input.GetActivated())
 	if err != nil {
+		logger.Error(err)
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
 			return &proto_user.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, domain.ErrUserNotFound.Error())
@@ -187,6 +185,7 @@ func (h *Handler) Delete(ctx context.Context, input *proto_user.GetRequest) (*pr
 	}
 	err := h.services.Users.Delete(ctx, input.GetUserId(), input.GetEmail())
 	if err != nil {
+		logger.Error(err)
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
 			return &proto_user.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, domain.ErrUserNotFound.Error())
@@ -203,6 +202,7 @@ func (h *Handler) Activate(ctx context.Context, input *proto_user.ActivateReques
 	}
 	err := h.services.Users.Activate(ctx, input.GetUserID(), input.GetActivate())
 	if err != nil {
+		logger.Error(err)
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
 			return &proto_user.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, domain.ErrUserNotFound.Error())
@@ -219,6 +219,7 @@ func (h *Handler) VerificationCode(ctx context.Context, input *proto_user.GetReq
 	}
 	user, err := h.services.Users.GetByID(ctx, input.GetUserId())
 	if err != nil {
+		logger.Error(err)
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
 			return nil, status.Error(codes.InvalidArgument, "wrong id")
@@ -226,14 +227,11 @@ func (h *Handler) VerificationCode(ctx context.Context, input *proto_user.GetReq
 			return nil, status.Error(codes.Internal, "failed to get by id")
 		}
 	}
-	newVerificationCode := domain.VerificationCode{}
 	if user.VerificationCode.ExpiredAt.Before(time.Now()) {
-		newVerificationCode = domain.VerificationCode{
-			Code:      h.services.Sessions.GenerateVerificationCode(),
-			ExpiredAt: time.Now(),
-		}
-		err = h.services.Users.Update(ctx, user.ID.Hex(), user.Name, user.Surname, user.Phone, user.Email, user.Password, user.Roles, user.Activated, newVerificationCode)
+		var code string
+		code, err = h.services.Users.Update(ctx, user.ID.Hex(), user.Name, user.Surname, user.Phone, user.Email, user.Password, user.Roles, user.Activated)
 		if err != nil {
+			logger.Error(err)
 			switch {
 			case errors.Is(err, domain.ErrUserNotFound):
 				return nil, status.Error(codes.InvalidArgument, domain.ErrUserNotFound.Error())
@@ -243,7 +241,7 @@ func (h *Handler) VerificationCode(ctx context.Context, input *proto_user.GetReq
 		}
 		return &proto_user.VerificationCodeMessage{
 			Email: user.Email,
-			Code:  newVerificationCode.Code,
+			Code:  code,
 		}, nil
 	}
 	return &proto_user.VerificationCodeMessage{

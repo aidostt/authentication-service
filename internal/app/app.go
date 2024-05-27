@@ -54,6 +54,7 @@ func Run(configPath, envPath string) {
 		AccessTokenTTL:     cfg.Auth.JWT.AccessTokenTTL,
 		RefreshTokenTTL:    cfg.Auth.RefreshTokenTTL,
 		ActivationTokenTTL: cfg.Auth.ActivationTokenTTL,
+		ActivationCodeTTL:  cfg.Auth.ActivationCodeTTL,
 		Environment:        cfg.Environment,
 		Domain:             cfg.GRPC.Host,
 	})

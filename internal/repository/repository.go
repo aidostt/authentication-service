@@ -12,7 +12,7 @@ type Users interface {
 	GetByEmail(context.Context, string) (*domain.User, error)
 	Delete(context.Context, primitive.ObjectID, string) error
 	GetByID(context.Context, primitive.ObjectID) (*domain.User, error)
-	Update(context.Context, domain.User) error
+	Update(context.Context, *domain.User) error
 	Activate(context.Context, primitive.ObjectID, bool) error
 	AddRole(context.Context, primitive.ObjectID, string) error
 	RemoveRole(context.Context, primitive.ObjectID, string) error
