@@ -46,3 +46,7 @@ POST   /api/users/sign-out       --> authentication-service/internal/handlers.(*
 ```
 
 
+### To run the container you should write:
+docker build -t authentication-service .
+docker run -p 5050:5050 --env-file .env -ti authentication-service
+
