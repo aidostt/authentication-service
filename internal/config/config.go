@@ -19,6 +19,7 @@ const (
 	defaultAccessTokenTTL         = 15 * time.Minute
 	defaultActivationTokenTTL     = 4 * time.Hour
 	defaultRefreshTokenTTL        = 12 * time.Hour
+	defaultPasswordCost           = 12
 
 	envLocal = "local"
 	envDev   = "dev"
@@ -97,7 +98,11 @@ func setFromEnv(cfg *Config) {
 	cfg.Mongo.User = os.Getenv("MONGO_USER")
 	cfg.Mongo.Password = os.Getenv("MONGO_PASS")
 
-	cfg.Auth.PasswordCost, _ = strconv.Atoi(os.Getenv("PASSWORD_SALT"))
+	if cost, err := strconv.Atoi(os.Getenv("PASSWORD_COST")); err == nil && cost > 0 {
+		cfg.Auth.PasswordCost = cost
+	} else {
+		cfg.Auth.PasswordCost = defaultPasswordCost
+	}
 	cfg.Auth.JWT.SigningKey = os.Getenv("JWT_SIGNING_KEY")
 
 	cfg.GRPC.Host = os.Getenv("GRPC_HOST")
