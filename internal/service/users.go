@@ -144,6 +144,30 @@ func (s *UserService) Update(ctx context.Context, userID, name, surname, phone, 
 
 	return newVerificationCode.Code, s.repo.Update(ctx, usr)
 }
+
+// RefreshVerificationCode issues a new verification code for the user without
+// touching any other field. It exists so callers can renew an expired code
+// without routing through Update, which re-hashes the password and would
+// corrupt the stored hash when handed the already-hashed value.
+func (s *UserService) RefreshVerificationCode(ctx context.Context, userID string) (string, error) {
+	id, err := s.tokenManager.HexToObjectID(userID)
+	if err != nil {
+		return "", err
+	}
+	code, err := s.GenerateVerificationCode()
+	if err != nil {
+		return "", err
+	}
+	vc := domain.VerificationCode{
+		Code:      code,
+		ExpiredAt: time.Now().Add(s.activationCodeTTL),
+	}
+	if err := s.repo.UpdateVerificationCode(ctx, id, vc); err != nil {
+		return "", err
+	}
+	return code, nil
+}
+
 func (s *UserService) Delete(ctx context.Context, userID, email string) error {
 	id, err := s.tokenManager.HexToObjectID(userID)
 	if err != nil {

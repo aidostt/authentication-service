@@ -38,6 +38,7 @@ type Users interface {
 	IsAdmin(context.Context, string) (bool, error)
 	Activate(context.Context, string, bool) error
 	GenerateVerificationCode() (string, error)
+	RefreshVerificationCode(context.Context, string) (string, error)
 }
 
 type Sessions interface {

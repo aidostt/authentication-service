@@ -234,14 +234,14 @@ func (h *Handler) VerificationCode(ctx context.Context, input *proto_user.GetReq
 	}
 	if user.VerificationCode.ExpiredAt.Before(time.Now()) {
 		var code string
-		code, err = h.services.Users.Update(ctx, user.ID.Hex(), user.Name, user.Surname, user.Phone, user.Email, user.Password, user.Roles, user.Activated)
+		code, err = h.services.Users.RefreshVerificationCode(ctx, user.ID.Hex())
 		if err != nil {
 			logger.Error(err)
 			switch {
 			case errors.Is(err, domain.ErrUserNotFound):
 				return nil, status.Error(codes.InvalidArgument, domain.ErrUserNotFound.Error())
 			default:
-				return nil, status.Error(codes.Internal, "failed to update user: "+err.Error())
+				return nil, status.Error(codes.Internal, "failed to refresh verification code: "+err.Error())
 			}
 		}
 		return &proto_user.VerificationCodeMessage{
