@@ -6,6 +6,7 @@ import (
 	"authentication-service/pkg/hash"
 	auth "authentication-service/pkg/manager"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -36,12 +37,11 @@ func NewSessionService(repo repository.Sessions, hasher hash.PasswordHasher, tok
 }
 
 func (s *SessionService) Refresh(ctx context.Context, user *domain.User, jwt string) (TokenPair, error) {
+	// An expired access token is expected here — refreshing is exactly how the
+	// client recovers from it; any other parse error is fatal.
 	useridJwt, _, _, err := s.tokenManager.Parse(jwt)
-	if err != nil {
-		if err.Error() == "token is expired" {
-		} else {
-			return TokenPair{}, err
-		}
+	if err != nil && !errors.Is(err, auth.ErrTokenExpired) {
+		return TokenPair{}, err
 	}
 	if useridJwt != user.ID.Hex() {
 		return TokenPair{}, domain.ErrUnauthorized

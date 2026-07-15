@@ -1,10 +1,10 @@
 module authentication-service
 
-go 1.20
+go 1.21
 
 require (
 	github.com/aidostt/protos v0.5.6
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.18.2

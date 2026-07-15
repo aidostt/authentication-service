@@ -8,10 +8,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
+
+// ErrTokenExpired is returned by Parse when the access token is well-formed and
+// correctly signed but past its expiration. Callers match it with errors.Is to
+// decide whether to refresh, rather than comparing error strings.
+var ErrTokenExpired = errors.New("token is expired")
 
 // TokenManager provides logic for JWT & Refresh tokens generation and parsing.
 type TokenManager interface {
@@ -30,7 +35,7 @@ type CustomClaims struct {
 	UserID    string   `json:"user_id"`
 	Roles     []string `json:"roles"`
 	Activated bool     `json:"activated"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 func NewManager(signingKey string) (*Manager, error) {
@@ -46,8 +51,9 @@ func (m *Manager) NewAccessToken(userID string, ttl time.Duration, roles []strin
 		UserID:    userID,
 		Roles:     roles,
 		Activated: activated,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(ttl).Unix(), // Token expires in 24 hours
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    issuer,
 		},
 	}
@@ -57,31 +63,26 @@ func (m *Manager) NewAccessToken(userID string, ttl time.Duration, roles []strin
 	return token.SignedString([]byte(m.signingKey))
 }
 
-// Parse taking from the payload of JWT user id and returns it in string format. Token is still returned
-// in both cases, if it is expired or not.
+// Parse verifies the access token's signature and claims and returns the
+// identity it carries. The accepted signing algorithm is pinned server-side, so
+// a token advertising a different algorithm is rejected. An expired but
+// otherwise valid token still yields its claims alongside ErrTokenExpired, so
+// the caller can refresh using the (now stale) identity.
 func (m *Manager) Parse(accessToken string) (string, []string, bool, error) {
-	token, err := jwt.ParseWithClaims(accessToken, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
+	claims := new(CustomClaims)
+	_, err := jwt.ParseWithClaims(accessToken, claims, func(*jwt.Token) (interface{}, error) {
 		return []byte(m.signingKey), nil
-	})
-
+	},
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+		jwt.WithExpirationRequired(),
+	)
 	if err != nil {
-		var validationError *jwt.ValidationError
-		if errors.As(err, &validationError) && validationError.Errors&jwt.ValidationErrorExpired != 0 {
-			err = errors.New("token is expired")
-		} else {
-			return "", nil, false, err
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return claims.UserID, claims.Roles, claims.Activated, ErrTokenExpired
 		}
+		return "", nil, false, fmt.Errorf("parse access token: %w", err)
 	}
-
-	claims, ok := token.Claims.(*CustomClaims)
-	if !ok {
-		return "", nil, false, fmt.Errorf("error getting user claims from token")
-	}
-
-	return claims.UserID, claims.Roles, claims.Activated, err
+	return claims.UserID, claims.Roles, claims.Activated, nil
 }
 
 func (m *Manager) NewRefreshToken() (string, error) {
