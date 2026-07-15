@@ -6,10 +6,11 @@ import (
 	"authentication-service/pkg/hash"
 	authManager "authentication-service/pkg/manager"
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"math/rand"
+	"math/big"
 	"time"
 )
 
@@ -42,8 +43,12 @@ func (s *UserService) SignUp(ctx context.Context, name, surname, phone, email, p
 	if err != nil {
 		return primitive.ObjectID{}, "", err
 	}
+	code, err := s.GenerateVerificationCode()
+	if err != nil {
+		return primitive.ObjectID{}, "", err
+	}
 	newVerificationCode := domain.VerificationCode{
-		Code:      s.GenerateVerificationCode(),
+		Code:      code,
 		ExpiredAt: time.Now().Add(s.activationCodeTTL),
 	}
 	user := &domain.User{
@@ -117,8 +122,12 @@ func (s *UserService) Update(ctx context.Context, userID, name, surname, phone, 
 	if err != nil {
 		return "", err
 	}
+	code, err := s.GenerateVerificationCode()
+	if err != nil {
+		return "", err
+	}
 	newVerificationCode := domain.VerificationCode{
-		Code:      s.GenerateVerificationCode(),
+		Code:      code,
 		ExpiredAt: time.Now().Add(s.activationCodeTTL),
 	}
 	usr := &domain.User{
@@ -166,8 +175,11 @@ func (s *UserService) Activate(ctx context.Context, userID string, activate bool
 	return nil
 }
 
-func (s *UserService) GenerateVerificationCode() string {
-	rand.NewSource(time.Now().UnixNano())
-	code := rand.Intn(1000000)
-	return fmt.Sprintf("%06d", code)
+// GenerateVerificationCode returns a cryptographically random six-digit code.
+func (s *UserService) GenerateVerificationCode() (string, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	if err != nil {
+		return "", fmt.Errorf("generate verification code: %w", err)
+	}
+	return fmt.Sprintf("%06d", n.Int64()), nil
 }

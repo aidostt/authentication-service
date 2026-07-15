@@ -37,7 +37,7 @@ type Users interface {
 	SignIn(context.Context, string, string) (primitive.ObjectID, []string, bool, error)
 	IsAdmin(context.Context, string) (bool, error)
 	Activate(context.Context, string, bool) error
-	GenerateVerificationCode() string
+	GenerateVerificationCode() (string, error)
 }
 
 type Sessions interface {

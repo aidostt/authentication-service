@@ -2,13 +2,14 @@ package authManager
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"math/rand"
 	"time"
 )
 
@@ -85,15 +86,10 @@ func (m *Manager) Parse(accessToken string) (string, []string, bool, error) {
 
 func (m *Manager) NewRefreshToken() (string, error) {
 	b := make([]byte, 32)
-
-	s := rand.NewSource(time.Now().Unix())
-	r := rand.New(s)
-
-	if _, err := r.Read(b); err != nil {
-		return "", err
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate refresh token: %w", err)
 	}
-
-	return fmt.Sprintf("%x", b), nil
+	return hex.EncodeToString(b), nil
 }
 
 func (m *Manager) HexToObjectID(hex string) (primitive.ObjectID, error) {
