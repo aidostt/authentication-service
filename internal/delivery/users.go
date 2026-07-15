@@ -85,13 +85,18 @@ func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (
 }
 
 func (h *Handler) IsAdmin(ctx context.Context, input *proto_auth.IsAdminRequest) (*proto_auth.IsAdminResponse, error) {
-	//TODO: implement IsAdmin
 	if input.UserId == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 	ok, err := h.services.Users.IsAdmin(ctx, input.GetUserId())
 	if err != nil {
-
+		logger.Error(err)
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			return nil, status.Error(codes.InvalidArgument, "wrong id")
+		default:
+			return nil, status.Error(codes.Internal, "failed to check admin role")
+		}
 	}
 	return &proto_auth.IsAdminResponse{IsAdmin: ok}, nil
 }
