@@ -1,6 +1,3 @@
-mongo:
-  databaseName: reservista
-
 auth:
   accessTokenTTL: 15m
   refreshTokenTTL: 12h

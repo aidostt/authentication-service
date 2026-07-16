@@ -4,56 +4,55 @@ import (
 	"authentication-service/internal/domain"
 	"context"
 	"errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// pgForeignKeyViolation is the SQLSTATE raised when a session references a user
+// that no longer exists.
+const pgForeignKeyViolation = "23503"
+
 type SessionRepo struct {
-	db *mongo.Collection
+	db *pgxpool.Pool
 }
 
-func NewSessionRepo(db *mongo.Database) *SessionRepo {
-	return &SessionRepo{
-		db: db.Collection(sessionCollection),
-	}
+func NewSessionRepo(db *pgxpool.Pool) *SessionRepo {
+	return &SessionRepo{db: db}
 }
 
+// SetSession stores the user's single active session, replacing any existing one
+// (refresh tokens rotate on every refresh). The upsert targets the unique index
+// on userid.
 func (r *SessionRepo) SetSession(ctx context.Context, session domain.Session) error {
-	filter := bson.M{"userID": session.UserID}
-	update := bson.M{
-		"$set": bson.M{
-			"lastVisitAt":  time.Now(),
-			"refreshToken": session.RefreshToken,
-			"expiresAt":    session.ExpiredAt,
-		},
-	}
-	opts := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
-
-	var updatedDoc bson.M
-	err := r.db.FindOneAndUpdate(ctx, filter, update, opts).Decode(&updatedDoc)
+	const query = `
+		INSERT INTO sessions (userid, refresh_token, expires_at)
+		VALUES ($1::uuid, $2, $3)
+		ON CONFLICT (userid) DO UPDATE
+		SET refresh_token = EXCLUDED.refresh_token, expires_at = EXCLUDED.expires_at`
+	_, err := r.db.Exec(ctx, query, session.UserID, session.RefreshToken, session.ExpiredAt)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgForeignKeyViolation {
 			return domain.ErrUserNotFound
 		}
 		return err
 	}
-
 	return nil
 }
 
 func (r *SessionRepo) GetByRefreshToken(ctx context.Context, refreshToken string) (*domain.Session, error) {
-	session := &domain.Session{}
-	if err := r.db.FindOne(ctx, bson.M{
-		"refreshToken": refreshToken,
-	}).Decode(&session); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return &domain.Session{}, domain.ErrUserNotFound
+	var session domain.Session
+	err := r.db.QueryRow(ctx,
+		`SELECT userid::text, refresh_token, expires_at FROM sessions WHERE refresh_token = $1`,
+		refreshToken,
+	).Scan(&session.UserID, &session.RefreshToken, &session.ExpiredAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
 		}
-
-		return &domain.Session{}, err
+		return nil, err
 	}
-
-	return session, nil
+	return &session, nil
 }

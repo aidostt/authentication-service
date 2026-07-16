@@ -41,7 +41,7 @@ func (h *Handler) SignUp(ctx context.Context, input *proto_auth.SignUpRequest) (
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to sign up: "+err.Error())
 	}
-	tokens, err := h.services.Sessions.CreateSession(ctx, id.Hex(), roles, false)
+	tokens, err := h.services.Sessions.CreateSession(ctx, id, roles, false)
 	if err != nil {
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to create session")
@@ -76,7 +76,7 @@ func (h *Handler) SignIn(ctx context.Context, input *proto_auth.SignInRequest) (
 		}
 
 	}
-	tokens, err := h.services.Sessions.CreateSession(ctx, id.Hex(), roles, activated)
+	tokens, err := h.services.Sessions.CreateSession(ctx, id, roles, activated)
 	if err != nil {
 		logger.Error(err)
 		return nil, status.Error(codes.Internal, "failed to create session")
@@ -234,7 +234,7 @@ func (h *Handler) VerificationCode(ctx context.Context, input *proto_user.GetReq
 	}
 	if user.VerificationCode.ExpiredAt.Before(time.Now()) {
 		var code string
-		code, err = h.services.Users.RefreshVerificationCode(ctx, user.ID.Hex())
+		code, err = h.services.Users.RefreshVerificationCode(ctx, user.ID)
 		if err != nil {
 			logger.Error(err)
 			switch {

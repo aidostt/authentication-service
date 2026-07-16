@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
 
@@ -23,7 +22,6 @@ type TokenManager interface {
 	NewAccessToken(string, time.Duration, []string, string, bool) (string, error)
 	Parse(accessToken string) (string, []string, bool, error)
 	NewRefreshToken() (string, error)
-	HexToObjectID(string) (primitive.ObjectID, error)
 	NewActivationToken(string) string
 }
 
@@ -91,14 +89,6 @@ func (m *Manager) NewRefreshToken() (string, error) {
 		return "", fmt.Errorf("generate refresh token: %w", err)
 	}
 	return hex.EncodeToString(b), nil
-}
-
-func (m *Manager) HexToObjectID(hex string) (primitive.ObjectID, error) {
-	objectId, err := primitive.ObjectIDFromHex(hex)
-	if err != nil {
-		return primitive.NilObjectID, err
-	}
-	return objectId, nil
 }
 
 func (m *Manager) NewActivationToken(data string) string {

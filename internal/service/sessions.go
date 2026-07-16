@@ -43,10 +43,10 @@ func (s *SessionService) Refresh(ctx context.Context, user *domain.User, jwt str
 	if err != nil && !errors.Is(err, auth.ErrTokenExpired) {
 		return TokenPair{}, err
 	}
-	if useridJwt != user.ID.Hex() {
+	if useridJwt != user.ID {
 		return TokenPair{}, domain.ErrUnauthorized
 	}
-	return s.CreateSession(ctx, user.ID.Hex(), user.Roles, user.Activated)
+	return s.CreateSession(ctx, user.ID, user.Roles, user.Activated)
 }
 
 func (s *SessionService) CreateSession(ctx context.Context, userID string, roles []string, activated bool) (res TokenPair, err error) {
@@ -59,13 +59,9 @@ func (s *SessionService) CreateSession(ctx context.Context, userID string, roles
 	if err != nil {
 		return TokenPair{}, err
 	}
-	id, err := s.tokenManager.HexToObjectID(userID)
-	if err != nil {
-		return TokenPair{}, err
-	}
 
 	session := domain.Session{
-		UserID:       id,
+		UserID:       userID,
 		RefreshToken: res.RefreshToken,
 		ExpiredAt:    time.Now().Add(s.refreshTokenTTL),
 	}

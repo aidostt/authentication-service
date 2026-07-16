@@ -7,7 +7,7 @@ import (
 	"authentication-service/internal/server"
 	"authentication-service/internal/service"
 	"authentication-service/internal/tracing"
-	"authentication-service/pkg/database/mongodb"
+	"authentication-service/pkg/database/postgres"
 	"authentication-service/pkg/hash"
 	"authentication-service/pkg/logger"
 	authManager "authentication-service/pkg/manager"
@@ -37,13 +37,15 @@ func Run(configPath, envPath string) {
 	}
 
 	// Dependencies
-	mongoClient, err := mongodb.NewClient(cfg.Mongo.URI, cfg.Mongo.User, cfg.Mongo.Password)
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		cfg.Postgres.User, cfg.Postgres.Password, cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.DBName)
+	pool, err := postgres.NewPool(context.Background(), dsn)
 	if err != nil {
 		logger.Error(err)
 
 		return
 	}
-	db := mongoClient.Database(cfg.Mongo.Name)
+	defer pool.Close()
 
 	hasher := hash.NewHasher(cfg.Auth.PasswordCost)
 
@@ -54,7 +56,7 @@ func Run(configPath, envPath string) {
 		return
 	}
 
-	repos := repository.NewModels(db)
+	repos := repository.NewModels(pool)
 	services := service.NewServices(service.Dependencies{
 		Repos:              repos,
 		Hasher:             hasher,
@@ -100,10 +102,6 @@ func Run(configPath, envPath string) {
 	srv.Stop()
 	_ = metricsSrv.Close()
 	logger.Info("Stopping server at: " + cfg.GRPC.Host + ":" + cfg.GRPC.Port)
-	if err := mongoClient.Disconnect(context.Background()); err != nil {
-		logger.Error(err.Error())
-	}
-
 }
 
 // metricsPort is the port for the Prometheus metrics endpoint; it defaults to

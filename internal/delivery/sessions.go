@@ -32,7 +32,7 @@ func (h *Handler) Refresh(ctx context.Context, tokens *proto_auth.TokenRequest) 
 	if session.RefreshToken != tokens.GetRt() {
 		return nil, status.Error(codes.Unauthenticated, "unauthorized access")
 	}
-	user, err := h.services.Users.GetByID(ctx, session.UserID.Hex())
+	user, err := h.services.Users.GetByID(ctx, session.UserID)
 	if err != nil {
 		logger.Error(err)
 		switch {
@@ -69,7 +69,7 @@ func (h *Handler) CreateSession(ctx context.Context, input *proto_auth.CreateReq
 			return nil, status.Error(codes.Internal, "failed to get by id")
 		}
 	}
-	newTokens, err := h.services.Sessions.CreateSession(ctx, user.ID.Hex(), user.Roles, user.Activated)
+	newTokens, err := h.services.Sessions.CreateSession(ctx, user.ID, user.Roles, user.Activated)
 	if err != nil {
 		logger.Error(err)
 		switch {

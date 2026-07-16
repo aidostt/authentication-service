@@ -6,9 +6,9 @@ Basic authentication service using
 
 ## Technologies
 
-* Go 1.20
+* Go
 * JWT + RT
-* mongoDB
+* PostgreSQL
 
 
 ### Usage
@@ -17,13 +17,17 @@ Clone the repository:
 git clone git@github.com:aidostt/authentication-service.git
 ```
 
-Change authentication-service/.env file and add your mongoDB credentials:
+Change authentication-service/.env file and add your PostgreSQL credentials:
 ```
-MONGO_URI=_YOUR MONGO_URI HERE_
-MONGO_USER=_YOUR MONGO_USER HERE_
-MONGO_PASS=_YOUR MONGO_PASS HER_
+POSTGRES_USER=_YOUR POSTGRES USER HERE_
+POSTGRES_PASSWORD=_YOUR POSTGRES PASSWORD HERE_
+POSTGRES_HOST=_YOUR POSTGRES HOST HERE_
+POSTGRES_PORT=_YOUR POSTGRES PORT HERE_
+POSTGRES_DB=_YOUR POSTGRES DATABASE HERE_
 ...
 ```
+
+Apply the database schema from the `migrations/` directory before first run.
 
 Run a program:
 ```

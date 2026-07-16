@@ -6,7 +6,6 @@ import (
 	"authentication-service/pkg/hash"
 	auth "authentication-service/pkg/manager"
 	"context"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
 
@@ -33,8 +32,8 @@ type Users interface {
 	GetByEmail(context.Context, string) (*domain.User, error)
 	Update(context.Context, string, string, string, string, string, string, []string, bool) (string, error)
 	Delete(context.Context, string, string) error
-	SignUp(context.Context, string, string, string, string, string, []string) (primitive.ObjectID, string, error)
-	SignIn(context.Context, string, string) (primitive.ObjectID, []string, bool, error)
+	SignUp(context.Context, string, string, string, string, string, []string) (string, string, error)
+	SignIn(context.Context, string, string) (string, []string, bool, error)
 	IsAdmin(context.Context, string) (bool, error)
 	Activate(context.Context, string, bool) error
 	GenerateVerificationCode() (string, error)

@@ -30,16 +30,17 @@ type (
 	Config struct {
 		Environment string
 		Application string
-		Mongo       MongoConfig `mapstructure:"mongo"`
-		Auth        AuthConfig  `mapstructure:"auth"`
-		GRPC        GRPCConfig  `mapstructure:"grpc"`
+		Postgres    PostgresConfig
+		Auth        AuthConfig `mapstructure:"auth"`
+		GRPC        GRPCConfig `mapstructure:"grpc"`
 	}
 
-	MongoConfig struct {
-		URI      string
+	PostgresConfig struct {
 		User     string
 		Password string
-		Name     string `mapstructure:"databaseName"`
+		Host     string
+		Port     string
+		DBName   string
 	}
 
 	AuthConfig struct {
@@ -79,11 +80,6 @@ func Init(configsDir, envDir string) (*Config, error) {
 }
 
 func unmarshal(cfg *Config) error {
-
-	if err := viper.UnmarshalKey("mongo", &cfg.Mongo); err != nil {
-		return err
-	}
-
 	if err := viper.UnmarshalKey("grpc", &cfg.GRPC); err != nil {
 		return err
 	}
@@ -94,9 +90,11 @@ func unmarshal(cfg *Config) error {
 }
 
 func setFromEnv(cfg *Config) {
-	cfg.Mongo.URI = os.Getenv("MONGO_URI")
-	cfg.Mongo.User = os.Getenv("MONGO_USER")
-	cfg.Mongo.Password = os.Getenv("MONGO_PASS")
+	cfg.Postgres.User = os.Getenv("POSTGRES_USER")
+	cfg.Postgres.Password = os.Getenv("POSTGRES_PASSWORD")
+	cfg.Postgres.Host = os.Getenv("POSTGRES_HOST")
+	cfg.Postgres.Port = os.Getenv("POSTGRES_PORT")
+	cfg.Postgres.DBName = os.Getenv("POSTGRES_DB")
 
 	if cost, err := strconv.Atoi(os.Getenv("PASSWORD_COST")); err == nil && cost > 0 {
 		cfg.Auth.PasswordCost = cost

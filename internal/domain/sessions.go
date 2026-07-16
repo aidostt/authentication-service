@@ -1,17 +1,14 @@
 package domain
 
-import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"time"
-)
+import "time"
 
 type Session struct {
-	UserID       primitive.ObjectID `json:"userID" bson:"userID"`
-	RefreshToken string             `json:"refreshToken" bson:"refreshToken"`
-	ExpiredAt    time.Time          `json:"expiresAt" bson:"expiresAt"`
+	UserID       string    `json:"userID"`
+	RefreshToken string    `json:"refreshToken"`
+	ExpiredAt    time.Time `json:"expiresAt"`
 }
 
 type VerificationCode struct {
-	Code      string    `json:"code" bson:"code"`
-	ExpiredAt time.Time `json:"expiresAt" bson:"expiresAt"`
+	Code      string    `json:"code"`
+	ExpiredAt time.Time `json:"expiresAt"`
 }
