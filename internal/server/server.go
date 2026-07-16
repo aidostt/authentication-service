@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"authentication-service/pkg/logger"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
@@ -20,6 +21,7 @@ type Server struct {
 
 func NewServer() *Server {
 	grpcServer := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		grpc.ChainUnaryInterceptor(loggingInterceptor, recoveryInterceptor),
 	)
 	registerHealth(grpcServer)

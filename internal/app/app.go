@@ -6,6 +6,7 @@ import (
 	"authentication-service/internal/repository"
 	"authentication-service/internal/server"
 	"authentication-service/internal/service"
+	"authentication-service/internal/tracing"
 	"authentication-service/pkg/database/mongodb"
 	"authentication-service/pkg/hash"
 	"authentication-service/pkg/logger"
@@ -26,6 +27,13 @@ func Run(configPath, envPath string) {
 		logger.Error(err)
 
 		return
+	}
+
+	shutdownTracing, err := tracing.Init(context.Background(), "authentication-service")
+	if err != nil {
+		logger.Errorf("tracing init: %s", err.Error())
+	} else {
+		defer func() { _ = shutdownTracing(context.Background()) }()
 	}
 
 	// Dependencies
