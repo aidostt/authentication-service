@@ -1,52 +1,27 @@
+// Package logger is a thin wrapper over log/slog that emits structured JSON
+// logs. The package-level functions keep a small, stable API so call sites stay
+// unchanged; the handler adds the source location to every record.
 package logger
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"runtime"
+	"log/slog"
+	"os"
 )
 
-func Debug(msg ...interface{}) {
-	logrus.Debug(msg...)
-}
+var log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	Level:     slog.LevelInfo,
+	AddSource: true,
+}))
 
-func Debugf(format string, args ...interface{}) {
-	logrus.Debugf(format, args...)
-}
+func Debug(msg ...interface{}) { log.Debug(fmt.Sprint(msg...)) }
 
-func Info(msg ...interface{}) {
-	logrus.Info(msg...)
-}
+func Debugf(format string, args ...interface{}) { log.Debug(fmt.Sprintf(format, args...)) }
 
-func Infof(format string, args ...interface{}) {
-	logrus.Infof(format, args...)
-}
+func Info(msg ...interface{}) { log.Info(fmt.Sprint(msg...)) }
 
-// getStackTrace returns a formatted stack trace with a given depth
-func getStackTrace(depth int) string {
-	stackBuf := make([]uintptr, depth)
-	length := runtime.Callers(3, stackBuf[:]) // skip 3 levels (Callers, getStackTrace, Error/Errorf)
-	stackBuf = stackBuf[:length]
+func Infof(format string, args ...interface{}) { log.Info(fmt.Sprintf(format, args...)) }
 
-	stackTrace := ""
-	for _, pc := range stackBuf {
-		fn := runtime.FuncForPC(pc)
-		if fn == nil {
-			continue
-		}
-		file, line := fn.FileLine(pc)
-		stackTrace += fmt.Sprintf("%s:%d %s\n", file, line, fn.Name())
-	}
+func Error(msg ...interface{}) { log.Error(fmt.Sprint(msg...)) }
 
-	return stackTrace
-}
-
-func Error(msg ...interface{}) {
-	stackTrace := getStackTrace(3)
-	logrus.Error(fmt.Sprint(msg...) + "\n" + stackTrace)
-}
-
-func Errorf(format string, args ...interface{}) {
-	stackTrace := getStackTrace(3)
-	logrus.Errorf(format+"\n"+stackTrace, args...)
-}
+func Errorf(format string, args ...interface{}) { log.Error(fmt.Sprintf(format, args...)) }

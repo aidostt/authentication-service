@@ -6,7 +6,6 @@ require (
 	github.com/aidostt/protos v0.7.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
-	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.18.2
 	go.mongodb.org/mongo-driver v1.14.0
 	golang.org/x/crypto v0.17.0
