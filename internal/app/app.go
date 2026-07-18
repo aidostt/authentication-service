@@ -6,7 +6,7 @@ import (
 	"authentication-service/internal/repository"
 	"authentication-service/internal/server"
 	"authentication-service/internal/service"
-	"authentication-service/internal/tracing"
+	"authentication-service/pkg/tracing"
 	"authentication-service/pkg/database/postgres"
 	"authentication-service/pkg/hash"
 	"authentication-service/pkg/logger"
